@@ -30,13 +30,10 @@ def get_args(argv):
 
 
 class ClientStub:
-    def __init__(self, ip, port):
-        self.ip = ip
-        self.port = port
-        # 创建socket，连接到注册中心 todo ipv4 or ipv6
-        self.client_to_register_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client_to_register_socket.settimeout(10)
-        self.client_to_register_socket.connect((self.ip, self.port))
+    def __init__(self, center_ip, center_port):
+        self.center_ip = center_ip
+        self.center_port = center_port
+
 
 
 
@@ -46,16 +43,21 @@ class ClientStub:
         :param service_name: 请求的服务名称
         :return:服务地址(ip,port)或None（失败）
         """
+        # 创建socket，连接到注册中心 todo ipv4 or ipv6
+        client_to_register_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_to_register_socket.settimeout(10)
+        client_to_register_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 允许重用端口
+        client_to_register_socket.connect((self.center_ip, self.center_port))
         # 定义消息格式并序列化
         request_data = {
-            type: 'find',
-            method_name: method_name
+            'type': 'find',
+            'method_name': method_name
         }
         request_data = pickle.dumps(request_data)  # todo 粘包需要解决吗
         # 发送请求
-        self.client_to_register_socket.sendall(request_data)
+        client_to_register_socket.sendall(request_data)
         # 接收响应
-        response_data = self.client_to_register_socket.recv(1024)
+        response_data = client_to_register_socket.recv(1024)
         response_data = pickle.loads(response_data)
         if request_data is None:
             print("没有找到指定服务")
@@ -80,14 +82,18 @@ class ClientStub:
         client_to_service_socket.connect(service_addr)
         # 定义消息格式并序列化
         request_data = {
-            method_name: method_name,
-            params: params
+            'method_name': method_name,
+            'params': params
         }
         request_data = pickle.dumps(request_data)  # todo 粘包需要解决吗
         client_to_service_socket.sendall(request_data)
         # 接收响应
         response_data = client_to_service_socket.recv(1024)
         response_data = pickle.loads(response_data)
+        if response_data is None:
+            print("error")
+            exit(-1)
+        client_to_service_socket.close()
         return response_data
 
 
