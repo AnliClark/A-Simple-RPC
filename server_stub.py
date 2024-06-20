@@ -64,8 +64,11 @@ class ServerStub:
             if request_data['method_name'] not in self.services:
                 response_data = None
             else:
-                response_data = request_data['method_name'](request_data['params'])
-            response_data = pickle.loads(response_data)
+                service_name = request_data['method_name']
+                response_data = {
+                    'result': self.services[service_name](*request_data['params'])
+                }
+            response_data = pickle.dumps(response_data)
             accept_socket.sendall(response_data)
         except Exception as e:
             print(e)
@@ -84,7 +87,7 @@ class ServerStub:
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 允许端口复用
         server_socket.bind((self.ip, self.port))
         server_socket.listen(15)
-        server_socket.settimeout(10)
+        # server_socket.settimeout(10)
         print(f"服务器{self.server_name}开始运行")
         while True:
             accept_socket, addr = server_socket.accept()

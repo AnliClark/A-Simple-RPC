@@ -3,6 +3,19 @@ import pickle
 import socket
 import sys, getopt
 
+"""
+定义服务器与客户端之间的消息格式:
+client to server:
+request_data = {
+    method_name: String
+    params: ()
+}
+response_data ={
+    result: Any
+}
+"""
+
+
 def get_args(argv):
     """
     处理命令行参数
@@ -34,9 +47,6 @@ class ClientStub:
         self.center_ip = center_ip
         self.center_port = center_port
 
-
-
-
     def find_service(self, method_name):
         """
         从注册中心获取指定服务地址
@@ -59,10 +69,10 @@ class ClientStub:
         # 接收响应
         response_data = client_to_register_socket.recv(1024)
         response_data = pickle.loads(response_data)
+        client_to_register_socket.close()
         if request_data is None:
             print("没有找到指定服务")
-        return response_data
-
+        return response_data['service_addr']
 
     def call_service(self, method_name, params):
         """
@@ -94,20 +104,7 @@ class ClientStub:
             print("error")
             exit(-1)
         client_to_service_socket.close()
-        return response_data
+        return response_data['result']
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    def close(self):  #todo
+        pass
