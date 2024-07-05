@@ -6,7 +6,7 @@ import pickle
 # todo password
 """
 说明：本文件为注册中心的文件
-规定发送的消息都具有2 bytes，大端存储的头部，用于存储消息长度
+规定发送的消息都具有2 bytes的，大端存储的头部，用于存储消息长度
 规定server发送给注册中心的消息的格式为：
 request_data{
     'type': String  # 'register' or 'unregister'      
@@ -54,8 +54,17 @@ def find_service(service_name):
 
 def handle_request(acceptSocket):
     try:
-        request_data = acceptSocket.recv(1024)
-        requ_len = int.from_bytes(request_data[:2], 'big', signed=False)
+        # 读取头部长度，按量取走缓冲区数据  # todo 并发安全
+        requ_len = acceptSocket.recv(2)
+        requ_len = int.from_bytes(requ_len, 'big', signed=False)
+        request_data = b''
+        while requ_len != 0:
+            if requ_len >= 1024:
+                request_data += acceptSocket.recv(1024)
+                requ_len -= 1024
+            else:
+                request_data += acceptSocket.recv(requ_len)
+                requ_len = 0
         request_data = pickle.loads(request_data)
         if request_data['type'] == 'register':
             server_name = request_data['server_name']
@@ -67,6 +76,7 @@ def handle_request(acceptSocket):
             service_addr = find_service(service_name)
             response_data = {'service_addr': service_addr}
         response_data = pickle.dumps(response_data)
+        # 读取消息长度，并附加到消息头部
         resp_len = len(response_data)
         response_data = resp_len.to_bytes(2, 'big', signed=False) + response_data
         acceptSocket.sendall(response_data)

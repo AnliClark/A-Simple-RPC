@@ -1,4 +1,5 @@
 # coding:utf-8
+import ipaddress
 import sys, getopt
 import socket
 import pickle
@@ -29,7 +30,10 @@ class ServerStub:
         # 映射到自身的存储中
         self.services[service_name] = service
         # 创建与注册中心的连接
-        server_to_register_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  #todo iptype
+        if ipaddress.ip_address(self.center_ip).version == 4:
+            server_to_register_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        else:
+            server_to_register_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         server_to_register_socket.settimeout(10)
         server_to_register_socket.connect((self.center_ip, self.center_port))
         # 定义消息格式并序列化
@@ -40,10 +44,22 @@ class ServerStub:
             'service_addr': (self.ip, self.port)
         }
         request_data = pickle.dumps(request_data)
+        reqs_len = len(request_data)
+        request_data = reqs_len.to_bytes(2, 'big', signed=False) + request_data
         # 发送请求
         server_to_register_socket.sendall(request_data)
         # 接收响应
-        response_data = server_to_register_socket.recv(1024)
+        # 读取长度，按量取走缓冲区数据  # todo 并发安全
+        resp_len = server_to_register_socket.recv(2)
+        resp_len = int.from_bytes(resp_len, 'big', signed=False)
+        response_data = b''
+        while resp_len != 0:
+            if resp_len >= 1024:
+                response_data += server_to_register_socket.recv(1024)
+                resp_len -= 1024
+            else:
+                response_data += server_to_register_socket.recv(resp_len)
+                resp_len = 0
         response_data = pickle.loads(response_data)
         if not response_data['status']:
             print("服务注册失败")
@@ -59,7 +75,17 @@ class ServerStub:
         """
         try:
             # 接收数据并反序列化
-            request_data = accept_socket.recv(1024)
+            # 读取头部长度，按量取走缓冲区数据  # todo 并发安全
+            requ_len = accept_socket.recv(2)
+            requ_len = int.from_bytes(requ_len, 'big', signed=False)
+            request_data = b''
+            while requ_len != 0:
+                if requ_len >= 1024:
+                    request_data += accept_socket.recv(1024)
+                    requ_len -= 1024
+                else:
+                    request_data += accept_socket.recv(requ_len)
+                    requ_len = 0
             request_data = pickle.loads(request_data)
             if request_data['method_name'] not in self.services:
                 response_data = None
@@ -69,6 +95,8 @@ class ServerStub:
                     'result': self.services[service_name](*request_data['params'])
                 }
             response_data = pickle.dumps(response_data)
+            resp_len = len(response_data)
+            response_data = resp_len.to_bytes(2, 'big', signed=False) + response_data
             accept_socket.sendall(response_data)
         except Exception as e:
             print(e)
@@ -83,7 +111,10 @@ class ServerStub:
         :return:
         """
         # 创建服务端socket并监听
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # todo
+        if ipaddress.ip_address(self.ip).version == 4:
+            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        else:
+            server_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 允许端口复用
         server_socket.bind((self.ip, self.port))
         server_socket.listen(15)
