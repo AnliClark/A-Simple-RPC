@@ -1,0 +1,89 @@
+version: '3'
+networks:
+  rpc_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24
+
+services:
+  register_center:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python register_center/register_center.py
+    ports:
+      - "12000:12000"
+    networks:
+      rpc_network:
+          ipv4_address: 192.168.1.20
+
+  server_application1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "server/server_application1.py", "-p", "13001"]
+    ports:
+      - "13000:13000"
+      - "13001:13001"
+    networks:
+      rpc_network:
+        ipv4_address: 192.168.1.21
+    depends_on:
+      - register_center
+
+  server_application2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "server/server_application2.py", "-p", "13003"]
+    ports:
+      - "13002:13002"
+      - "13003:13003"
+    networks:
+      rpc_network:
+        ipv4_address: 192.168.1.22
+    depends_on:
+      - register_center
+
+  server_application3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "server/server_application3.py", "-p", "13005"]
+    ports:
+      - "13004:13004"
+      - "13005:13005"
+    networks:
+      rpc_network:
+        ipv4_address: 192.168.1.23
+    depends_on:
+      - register_center
+
+  client_application1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "client/client_application1.py", "-l", "192.168.1.20", "-p", "12000"]
+    ports:
+      - "13006:13006"
+      - "13007:13007"
+    networks:
+      rpc_network:
+        ipv4_address: 192.168.1.24
+    depends_on:
+      - register_center
+
+  client_application2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "client/client_application2.py", "-l", "192.168.1.20", "-p", "12000"]
+    ports:
+      - "13008:13008"
+      - "13009:13009"
+    networks:
+      rpc_network:
+        ipv4_address: 192.168.1.25
+    depends_on:
+      - register_center

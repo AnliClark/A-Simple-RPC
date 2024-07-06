@@ -88,7 +88,7 @@ def handle_request(acceptSocket):
 
 if __name__ == '__main__':
     # 创建注册中心套接字
-    centerName = '127.0.0.1'
+    centerName = '192.168.1.20'
     centerPort = 12000
     centerSocket = socket(AF_INET, SOCK_STREAM)
     centerSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)  # 设置端口重用，以便服务能迅速重启

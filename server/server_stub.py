@@ -14,7 +14,7 @@ class ServerStub:
     def __init__(self, ip, port, server_name):
         self.ip = ip
         self.port = port
-        self.center_ip = '127.0.0.1'  # 注册中心的地址
+        self.center_ip = '192.168.1.20'  # 注册中心的地址
         self.center_port = 12000
         self.server_name = server_name
         self.services = {}
