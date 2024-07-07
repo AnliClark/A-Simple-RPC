@@ -96,7 +96,8 @@ class RegisterCenter:
         while True:
             time.sleep(5)
             self.lock.acquire()
-            for server_addr, heartbeat_time in self.hb_dict:
+            for server_addr in list(self.hb_dict.keys()):
+                heartbeat_time = self.hb_dict[server_addr]
                 if time.time() - heartbeat_time > 70:
                     print(f"Server {server_addr} removed due to timeout")
                     # 将映射全部删除

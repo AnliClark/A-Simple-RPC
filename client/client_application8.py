@@ -1,4 +1,5 @@
 from clientstub import *
+from client_function import *
 
 if __name__ == '__main__':
     # 处理命令行参数
@@ -17,8 +18,8 @@ if __name__ == '__main__':
         sqrt_test = client.my_sqrt(4)
         upper_test = client.my_upper('hello')
         lower_test = client.my_lower('HELLO')
-        cat_test = client.my_cat('hello world', ' ')
-        spilt_test = client.my_split('hello world')
+        cat_test = client.my_cat('hello', 'world')
+        spilt_test = client.my_split('hello world', ' ')
         print(add_test)
         print(sub_test)
         print(mul_test)
