@@ -51,13 +51,15 @@ class RegisterCenter:
     def register_service(self, server_name, service_name, service_addr):
         # 获取锁
         self.lock.acquire()
+        # 如果注册中心中没有记录过服务器
+        if service_addr not in self.service_addr_dict:
+            self.load_list.append((0, service_addr))
         self.addr_server_dict[service_addr] = server_name
         if service_name in self.service_addr_dict:
             self.service_addr_dict[service_name].append(service_addr)
         else:
             self.service_addr_dict[service_name] = [service_addr]
         self.hb_dict[service_addr] = time.time()
-        self.load_list.append((0, service_addr))
         # 释放锁
         self.lock.release()
         return True
@@ -93,22 +95,23 @@ class RegisterCenter:
         """
         while True:
             time.sleep(5)
-            with self.lock:
-                for server_addr, heartbeat_time in self.hb_dict:
-                    if time.time() - heartbeat_time > 70:
-                        print(f"Server {server_addr} removed due to timeout")
-                        # 将映射全部删除
-                        del self.addr_server_dict[server_addr]
-                        del self.hb_dict[server_addr]
-                        for service_name, service_addr_list in self.service_addr_dict.items():
-                            if server_addr in service_addr_list:
-                                service_addr_list.remove(server_addr)
-                                if len(service_addr_list) == 0:
-                                    del self.service_addr_dict[service_name]
-                        for load, addr in self.load_list:
-                            if addr == server_addr:
-                                self.load_list.remove((load, server_addr))
-                                break
+            self.lock.acquire()
+            for server_addr, heartbeat_time in self.hb_dict:
+                if time.time() - heartbeat_time > 70:
+                    print(f"Server {server_addr} removed due to timeout")
+                    # 将映射全部删除
+                    del self.addr_server_dict[server_addr]
+                    del self.hb_dict[server_addr]
+                    for service_name, service_addr_list in self.service_addr_dict.items():
+                        if server_addr in service_addr_list:
+                            service_addr_list.remove(server_addr)
+                            if len(service_addr_list) == 0:
+                                del self.service_addr_dict[service_name]
+                    for load, addr in self.load_list:
+                        if addr == server_addr:
+                            self.load_list.remove((load, server_addr))
+                            break
+            self.lock.release()
 
     def load_fresh(self):
         """
@@ -144,14 +147,15 @@ class RegisterCenter:
                 service_addr = (addr[0], server_port)
                 response_data = {'status': self.register_service(server_name, service_name, service_addr)}
             if request_data['type'] == 'heartbeat':
-                with self.lock:
-                    if addr in self.hb_dict:
-                        self.hb_dict[addr] = time.time()
-                        print(f"Heartbeat received from {addr}")
-                        response_data = {'status': True}
-                    # 处理服务器端已经失效，但是服务器端仍不知道，并继续发送心跳的事件
-                    else:
-                        response_data = {'status': False}
+                self.lock.acquire()
+                if addr[0] in self.hb_dict:
+                    self.hb_dict[addr[0]] = time.time()
+                    print(f"Heartbeat received from {addr[0]}")
+                    response_data = {'status': True}
+                # 处理服务器端已经失效，但是服务器端仍不知道，并继续发送心跳的事件
+                else:
+                    response_data = {'status': False}
+                self.lock.release()
 
             elif request_data['type'] == 'find':
                 service_name = request_data['method_name']
@@ -184,9 +188,13 @@ class RegisterCenter:
         centerSocket.listen(5)
         print("注册中心已启动")
         # 启动心跳检测
-        threading.Thread(target=self.heartbeat_check).start()
+        hb_thread = threading.Thread(target=self.heartbeat_check)
+        hb_thread.dameon = True
+        hb_thread.start()
         # 启动负载均衡
-        threading.Thread(target=self.load_fresh).start()
+        load_thread = threading.Thread(target=self.load_fresh)
+        load_thread.dameon = True
+        load_thread.start()
         # 接收客户端连接
         while True:
             # 等待接收客户端连接

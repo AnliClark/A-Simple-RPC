@@ -73,7 +73,9 @@ services:
         ipv4_address: 192.168.1.24
     depends_on:
       - register_center
-      - server_application1  # todo 可以在没有服务器时使客户端等待
+      - server_application1
+      - server_application2
+      - server_application3
 
   client_application2:
     build:
@@ -89,6 +91,8 @@ services:
     depends_on:
       - register_center
       - server_application1
+      - server_application2
+      - server_application3
 
   client_application3:
     build:
@@ -104,6 +108,8 @@ services:
     depends_on:
       - register_center
       - server_application1
+      - server_application2
+      - server_application3
 
   client_application4:
     build:
@@ -119,6 +125,8 @@ services:
     depends_on:
       - register_center
       - server_application1
+      - server_application2
+      - server_application3
 
   client_application5:
     build:
@@ -134,6 +142,8 @@ services:
     depends_on:
       - register_center
       - server_application1
+      - server_application2
+      - server_application3
 
   client_application6:
     build:
@@ -149,6 +159,8 @@ services:
     depends_on:
       - register_center
       - server_application1
+      - server_application2
+      - server_application3
 
   client_application7:
     build:
@@ -164,6 +176,8 @@ services:
     depends_on:
       - register_center
       - server_application1
+      - server_application2
+      - server_application3
 
   client_application8:
     build:
@@ -179,6 +193,8 @@ services:
     depends_on:
       - register_center
       - server_application1
+      - server_application2
+      - server_application3
 
   client_application9:
     build:
@@ -194,6 +210,8 @@ services:
     depends_on:
       - register_center
       - server_application1
+      - server_application2
+      - server_application3
 
   client_application10:
     build:
@@ -209,3 +227,5 @@ services:
     depends_on:
       - register_center
       - server_application1
+      - server_application2
+      - server_application3

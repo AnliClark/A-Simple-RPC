@@ -102,41 +102,44 @@ class ServerStub:
     def send_heartbeat(self):
         while True:
             try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 设置端口重用
-                    s.connect((self.center_ip, self.center_port))
+                heartbeat_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                heartbeat_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 设置端口重用
+                heartbeat_socket.connect((self.center_ip, self.center_port))
 
-                    # 封装请求消息
-                    request_data = {"type": "heartbeat"}
-                    request_data = pickle.dumps(request_data)
-                    reqs_len = len(request_data)
-                    request_data = reqs_len.to_bytes(2, 'big', signed=False) + request_data
+                # 封装请求消息
+                request_data = {"type": "heartbeat"}
+                request_data = pickle.dumps(request_data)
+                reqs_len = len(request_data)
+                request_data = reqs_len.to_bytes(2, 'big', signed=False) + request_data
 
-                    # 发送请求
-                    s.sendall(request_data)
+                # 发送请求
+                heartbeat_socket.sendall(request_data)
 
-                    # 接收响应
-                    # 读取长度，按量取走缓冲区数据
-                    resp_len = s.recv(2)
-                    resp_len = int.from_bytes(resp_len, 'big', signed=False)
-                    response_data = b''
-                    while resp_len != 0:
-                        if resp_len >= 1024:
-                            response_data += s.recv(1024)
-                            resp_len -= 1024
-                        else:
-                            response_data += s.recv(resp_len)
-                            resp_len = 0
-                    response_data = pickle.loads(response_data)
-                    # 心跳响应失败，在注册中心端已经失效，需重新注册
-                    if not response_data['status']:
-                        print(f"心跳检测失败，重新注册中")
-                        self.register_service(self.services)
+                # 接收响应
+                # 读取长度，按量取走缓冲区数据
+                resp_len = heartbeat_socket.recv(2)
+                resp_len = int.from_bytes(resp_len, 'big', signed=False)
+                response_data = b''
+                while resp_len != 0:
+                    if resp_len >= 1024:
+                        response_data += heartbeat_socket.recv(1024)
+                        resp_len -= 1024
+                    else:
+                        response_data += heartbeat_socket.recv(resp_len)
+                        resp_len = 0
+                response_data = pickle.loads(response_data)
+                # 心跳响应失败，在注册中心端已经失效，需重新注册
+                if not response_data['status']:
+                    print(f"心跳检测失败，重新注册中")
+                    self.register_service(self.services)
+                else:
                     print(f"心跳检测成功")
                 time.sleep(60)  # 60s重传一次
             except Exception as e:
                 print(f"heartbeat failed: {e}")
                 time.sleep(5)  # 等待5秒，再次重传
+            finally:
+                heartbeat_socket.close()
 
     def run_server(self):
         """
@@ -154,7 +157,9 @@ class ServerStub:
         # server_socket.settimeout(10)
         print(f"服务器{self.server_name}开始运行")
         # 启动心跳
-        threading.Thread(target=self.send_heartbeat).start()
+        hb_thead = threading.Thread(target=self.send_heartbeat)
+        hb_thead.demon = True
+        hb_thead.start()
         # 接收请求
         while True:
             accept_socket, addr = server_socket.accept()
