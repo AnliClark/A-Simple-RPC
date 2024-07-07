@@ -12,6 +12,7 @@ import pickle
 request_data{
     'type': String  # 'register' or 'unregister'      
     'server_name': String  # 服务端名称
+    'port': int  # 服务端监听端口
     'service_name': String  # 服务名称
 }
 或是type为heartbeat:
@@ -138,8 +139,9 @@ class RegisterCenter:
             request_data = pickle.loads(request_data)
             if request_data['type'] == 'register':
                 server_name = request_data['server_name']
+                server_port = request_data['port']
                 service_name = request_data['service_name']
-                service_addr = addr
+                service_addr = (addr[0], server_port)
                 response_data = {'status': self.register_service(server_name, service_name, service_addr)}
             if request_data['type'] == 'heartbeat':
                 with self.lock:

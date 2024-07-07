@@ -1,6 +1,5 @@
 # coding:utf-8
 import ipaddress
-import sys, getopt
 import socket
 import pickle
 import threading
@@ -29,7 +28,6 @@ class ServerStub:
                 server_to_register_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             else:
                 server_to_register_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-            server_to_register_socket.bind((self.ip, self.port))
             server_to_register_socket.settimeout(10)
             server_to_register_socket.connect((self.center_ip, self.center_port))
             # 映射到自身的存储中
@@ -38,6 +36,7 @@ class ServerStub:
             request_data = {
                 'type': 'register',
                 'server_name': self.server_name,
+                'port': self.port,
                 'service_name': service_name,
             }
             request_data = pickle.dumps(request_data)

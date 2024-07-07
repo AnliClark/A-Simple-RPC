@@ -89,3 +89,123 @@ services:
     depends_on:
       - register_center
       - server_application1
+
+  client_application3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: [ "python", "client/client_application3.py", "-i", "192.168.1.20", "-p", "12000" ]
+    ports:
+      - "13010:13010"
+      - "13011:13011"
+    networks:
+      rpc_network:
+        ipv4_address: 192.168.1.26
+    depends_on:
+      - register_center
+      - server_application1
+
+  client_application4:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: [ "python", "client/client_application4.py", "-i", "192.168.1.20", "-p", "12000" ]
+    ports:
+      - "13012:13012"
+      - "13013:13013"
+    networks:
+      rpc_network:
+        ipv4_address: 192.168.1.27
+    depends_on:
+      - register_center
+      - server_application1
+
+  client_application5:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: [ "python", "client/client_application5.py", "-i", "192.168.1.20", "-p", "12000" ]
+    ports:
+      - "13014:13014"
+      - "13015:13015"
+    networks:
+      rpc_network:
+        ipv4_address: 192.168.1.28
+    depends_on:
+      - register_center
+      - server_application1
+
+  client_application6:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: [ "python", "client/client_application6.py", "-i", "192.168.1.20", "-p", "12000" ]
+    ports:
+      - "13016:13016"
+      - "13017:13017"
+    networks:
+      rpc_network:
+        ipv4_address: 192.168.1.29
+    depends_on:
+      - register_center
+      - server_application1
+
+  client_application7:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: [ "python", "client/client_application7.py", "-i", "192.168.1.20", "-p", "12000" ]
+    ports:
+      - "13018:13018"
+      - "13019:13019"
+    networks:
+      rpc_network:
+        ipv4_address: 192.168.1.30
+    depends_on:
+      - register_center
+      - server_application1
+
+  client_application8:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: [ "python", "client/client_application8.py", "-i", "192.168.1.20", "-p", "12000" ]
+    ports:
+      - "13020:13020"
+      - "13021:13021"
+    networks:
+      rpc_network:
+        ipv4_address: 192.168.1.31
+    depends_on:
+      - register_center
+      - server_application1
+
+  client_application9:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: [ "python", "client/client_application9.py", "-i", "192.168.1.20", "-p", "12000" ]
+    ports:
+      - "13022:13022"
+      - "13023:13023"
+    networks:
+      rpc_network:
+        ipv4_address: 192.168.1.32
+    depends_on:
+      - register_center
+      - server_application1
+
+  client_application10:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: [ "python", "client/client_application10.py", "-i", "192.168.1.20", "-p", "12000" ]
+    ports:
+      - "13024:13024"
+      - "13025:13025"
+    networks:
+      rpc_network:
+        ipv4_address: 192.168.1.33
+    depends_on:
+      - register_center
+      - server_application1
