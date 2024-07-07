@@ -39,8 +39,7 @@ if __name__ == '__main__':
     server_name = 'server3'
     # 创建服务端
     server = ServerStub(ip, port, server_name)
-    # 服务端注册函数
-    service_dict = {'add': add, 'sub': sub, 'mul': mul, 'div': div}
+    # 服务端注册服务（服务器提供的服务在sever_function.py中定义）
     server.register_service(service_dict)
     # 启动服务端
     server.run_server()
