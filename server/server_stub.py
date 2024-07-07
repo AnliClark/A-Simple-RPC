@@ -104,6 +104,7 @@ class ServerStub:
         while True:
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 设置端口重用
                     s.connect((self.center_ip, self.center_port))
 
                     # 封装请求消息

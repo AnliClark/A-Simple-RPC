@@ -75,7 +75,7 @@ class RegisterCenter:
             service_addrs = self.service_addr_dict[service_name]
             # 选择可以提供服务的服务器中负载最小的
             self.load_list.sort(key=lambda x: x[0])
-            for _, addr in self.load_list.sort:
+            for _, addr in self.load_list:
                 if addr in service_addrs:
                     service_addr = addr
                     # 更新负载
