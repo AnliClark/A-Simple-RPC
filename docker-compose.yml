@@ -64,7 +64,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["python", "client/client_application1.py", "-l", "192.168.1.20", "-p", "12000"]
+    command: ["python", "client/client_application1.py", "-i", "192.168.1.20", "-p", "12000"]
     ports:
       - "13006:13006"
       - "13007:13007"
@@ -78,7 +78,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["python", "client/client_application2.py", "-l", "192.168.1.20", "-p", "12000"]
+    command: ["python", "client/client_application2.py", "-i", "192.168.1.20", "-p", "12000"]
     ports:
       - "13008:13008"
       - "13009:13009"

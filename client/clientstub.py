@@ -26,7 +26,7 @@ def get_args(argv):
     try:
         opts, args = getopt.getopt(argv, 'hi:p:')
     except getopt.GetoptError as err:
-        print("错误！必须提供端口参数")
+        print("错误！必须提供端口和ip参数")
         exit(-1)
     for opt, arg in opts:
         if opt == '-h':
