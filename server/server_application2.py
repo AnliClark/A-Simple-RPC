@@ -40,9 +40,7 @@ if __name__ == '__main__':
     # 创建服务端
     server = ServerStub(ip, port, server_name)
     # 服务端注册函数
-    server.register_service('add', add)
-    server.register_service('sub', sub)
-    server.register_service('mul', mul)
-    server.register_service('div', div)
+    service_dict = {'add': add, 'sub': sub, 'mul': mul, 'div': div}
+    server.register_service(service_dict)
     # 启动服务端
     server.run_server()
