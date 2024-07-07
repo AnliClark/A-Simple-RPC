@@ -12,7 +12,6 @@ request_data{
     'type': String  # 'register' or 'unregister'      
     'server_name': String  # 服务端名称
     'service_name': String  # 服务名称
-    'service_addr': (String, int)  # (ip, port)
 }
 返回的消息格式为：
 response_data{
@@ -52,7 +51,7 @@ def find_service(service_name):
     return service_addr
 
 
-def handle_request(acceptSocket):
+def handle_request(acceptSocket, addr):
     try:
         # 读取头部长度，按量取走缓冲区数据  # todo 并发安全
         requ_len = acceptSocket.recv(2)
@@ -69,7 +68,7 @@ def handle_request(acceptSocket):
         if request_data['type'] == 'register':
             server_name = request_data['server_name']
             service_name = request_data['service_name']
-            service_addr = request_data['service_addr']
+            service_addr = addr
             response_data = {'status': register_service(server_name, service_name, service_addr)}
         elif request_data['type'] == 'find':
             service_name = request_data['method_name']
@@ -88,7 +87,7 @@ def handle_request(acceptSocket):
 
 if __name__ == '__main__':
     # 创建注册中心套接字
-    centerName = '192.168.1.20'
+    centerName = '192.168.1.20'  # 127.0.0.1 or 192.168.1.20 todo
     centerPort = 12000
     centerSocket = socket(AF_INET, SOCK_STREAM)
     centerSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)  # 设置端口重用，以便服务能迅速重启
@@ -102,7 +101,7 @@ if __name__ == '__main__':
         # 等待接收客户端连接
         acceptSocket, addr = centerSocket.accept()   # 接收rpc服务端与客户端连接
         acceptSocket.settimeout(10)  # todo
-        threading.Thread(target=handle_request, args=(acceptSocket,)).start()
+        threading.Thread(target=handle_request, args=(acceptSocket,addr,)).start()
 
 
 

@@ -73,6 +73,7 @@ services:
         ipv4_address: 192.168.1.24
     depends_on:
       - register_center
+      - server_application1  # todo 可以在没有服务器时使客户端等待
 
   client_application2:
     build:
@@ -87,3 +88,4 @@ services:
         ipv4_address: 192.168.1.25
     depends_on:
       - register_center
+      - server_application1

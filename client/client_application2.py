@@ -3,7 +3,7 @@ from clientstub import *
 if __name__ == '__main__':
     # 处理命令行参数
     center_ip, center_port = get_args(sys.argv[1:])
-    port = int(center_port)
+    center_port = int(center_port)
     # 创建客户端
     client = ClientStub(center_ip, center_port)
     # 以本地调用的形式，调用远程服务

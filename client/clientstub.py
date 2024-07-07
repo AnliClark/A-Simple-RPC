@@ -102,6 +102,7 @@ class ClientStub:
         service_addr = self.find_service(method_name)
         if service_addr is None:
             return None
+        print(service_addr)  # todo 调试用
         # 创建连接到服务端的套接字
         if ipaddress.ip_address(service_addr[1]).version == 4:
             client_to_service_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

@@ -3,7 +3,8 @@ from clientstub import *
 if __name__ == '__main__':
     # 处理命令行参数
     # ip, port = get_args(sys.argv[1:]) # todo
-    center_ip = '192.168.1.20'
+    # center_port = int(center_port)
+    center_ip = '192.168.1.20'  # 127.0.0.1 or 192.168.1.20 todo
     center_port = 12000
     # 创建客户端
     client = ClientStub(center_ip, center_port)

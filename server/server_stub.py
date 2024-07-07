@@ -14,7 +14,7 @@ class ServerStub:
     def __init__(self, ip, port, server_name):
         self.ip = ip
         self.port = port
-        self.center_ip = '192.168.1.20'  # 注册中心的地址
+        self.center_ip = '192.168.1.20'  # 注册中心的地址  127.0.0.1 or 192.168.1.20 todo
         self.center_port = 12000
         self.server_name = server_name
         self.services = {}
@@ -34,6 +34,7 @@ class ServerStub:
             server_to_register_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         else:
             server_to_register_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        server_to_register_socket.bind((self.ip, self.port))
         server_to_register_socket.settimeout(10)
         server_to_register_socket.connect((self.center_ip, self.center_port))
         # 定义消息格式并序列化
@@ -41,7 +42,6 @@ class ServerStub:
             'type': 'register',
             'server_name': self.server_name,
             'service_name': service_name,
-            'service_addr': (self.ip, self.port)
         }
         request_data = pickle.dumps(request_data)
         reqs_len = len(request_data)
