@@ -23,15 +23,15 @@ class ServerStub:
         :param service_dict: 服务名与服务的键值对
         :return:
         """
-        # 创建与注册中心的连接
-        if ipaddress.ip_address(self.center_ip).version == 4:
-            server_to_register_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        else:
-            server_to_register_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-        server_to_register_socket.bind((self.ip, self.port))
-        server_to_register_socket.settimeout(10)
-        server_to_register_socket.connect((self.center_ip, self.center_port))
-        for service_name, service in service_dict.item():
+        for service_name, service in service_dict.items():
+            # 创建与注册中心的连接
+            if ipaddress.ip_address(self.center_ip).version == 4:
+                server_to_register_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            else:
+                server_to_register_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+            server_to_register_socket.bind((self.ip, self.port))
+            server_to_register_socket.settimeout(10)
+            server_to_register_socket.connect((self.center_ip, self.center_port))
             # 映射到自身的存储中
             self.services[service_name] = service
             # 定义消息格式并序列化
@@ -62,6 +62,7 @@ class ServerStub:
                 print(f"服务{service_name}注册失败")
                 exit(-1)    # todo
             print(f"服务{service_name}注册成功")
+            server_to_register_socket.close()
 
     def handle_request(self, accept_socket):
         """
@@ -103,7 +104,7 @@ class ServerStub:
         while True:
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.connect((self.center_host, self.center_port))
+                    s.connect((self.center_ip, self.center_port))
 
                     # 封装请求消息
                     request_data = {"type": "heartbeat"}
@@ -152,6 +153,9 @@ class ServerStub:
         server_socket.listen(15)
         # server_socket.settimeout(10)
         print(f"服务器{self.server_name}开始运行")
+        # 启动心跳
+        threading.Thread(target=self.send_heartbeat).start()
+        # 接收请求
         while True:
             accept_socket, addr = server_socket.accept()
             threading.Thread(target=self.handle_request, args=(accept_socket,)).start()
