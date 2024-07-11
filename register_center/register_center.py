@@ -134,6 +134,19 @@ class RegisterCenter:
             for load in self.load_list:
                 load[0] = 0
             self.lock.release()
+
+            self.lock.acquire()
+            with open(self.log_name, 'w') as f:
+                sys.stdout = f
+                sys.stdout.flush()
+            self.lock.release()
+
+            self.err_lock.acquire()
+            with open(self.err_name, 'w') as f:
+                sys.stderr = f
+                sys.stderr.flush()
+            self.err_lock.release()
+
             time.sleep(60)
 
 
