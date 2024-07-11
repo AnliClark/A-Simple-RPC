@@ -49,8 +49,11 @@ class RegisterCenter:
         # 互斥锁，保证并发安全
         self.lock = threading.RLock()
         # 专门用于输出错误信息的锁(防止错误本身就是由self.lock引起的，同时保证输出不乱序)
-        self.print_lock = threading.RLock()
-
+        self.err_lock = threading.RLock()
+        # 日志文件的名字，用于输出普通日志信息
+        self.log_name = 'register_center.log'
+        # 错误信息文件的名字，用于保存错误信息
+        self.err_name = 'register_center_err.log'
     def register_service(self, server_name, service_name, service_addr):
         # 获取锁
         self.lock.acquire()
@@ -102,7 +105,11 @@ class RegisterCenter:
             for server_addr in list(self.hb_dict.keys()):
                 heartbeat_time = self.hb_dict[server_addr]
                 if time.time() - heartbeat_time > 70:
-                    print(f"服务器 {server_addr} 超时，已移除")
+                    with open(self.log_name, 'w') as f:
+                        sys.stdout = f
+                        self.print_lock.acquire()
+                        print(f"服务器 {server_addr} 超时，已移除")
+                        self.print_lock.release()
                     # 将映射全部删除
                     del self.addr_server_dict[server_addr]
                     del self.hb_dict[server_addr]
@@ -173,9 +180,11 @@ class RegisterCenter:
             response_data = resp_len.to_bytes(2, 'big', signed=False) + response_data
             acceptSocket.sendall(response_data)
         except Exception as e:
-            self.print_lock.acquire()
-            print(e)
-            self.print_lock.release()
+            with open(self.err_name, 'w') as f:
+                sys.stderr = f
+                self.print_lock.acquire()
+                print(e)
+                self.print_lock.release()
         finally:
             acceptSocket.close()
 
@@ -192,7 +201,9 @@ class RegisterCenter:
         # 绑定端口并开启监听
         centerSocket.bind((centerName, centerPort))
         centerSocket.listen(5)
-        print("注册中心已启动")
+        with open(self.log_name, 'w') as f:
+            sys.stdout = f
+            print("注册中心已启动")
         # 启动心跳检测
         hb_thread = threading.Thread(target=self.heartbeat_check)
         hb_thread.dameon = True
