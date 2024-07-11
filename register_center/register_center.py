@@ -1,4 +1,5 @@
 # coding:utf-8
+import sys
 import time
 from socket import *
 import threading
@@ -43,17 +44,19 @@ class RegisterCenter:
         self.service_addr_dict = {}
         # 服务器地址与心跳的元组映射
         self.hb_dict = {}
-        # 负载与服务器地址的元组列表
+        # 负载与服务器地址的二元列表的列表  [[load, addr],]
         self.load_list = []
         # 互斥锁，保证并发安全
         self.lock = threading.RLock()
+        # 专门用于输出错误信息的锁(防止错误本身就是由self.lock引起的，同时保证输出不乱序)
+        self.print_lock = threading.RLock()
 
     def register_service(self, server_name, service_name, service_addr):
         # 获取锁
         self.lock.acquire()
         # 如果注册中心中没有记录过服务器
         if service_addr not in self.service_addr_dict:
-            self.load_list.append((0, service_addr))
+            self.load_list.append([0, service_addr])
         self.addr_server_dict[service_addr] = server_name
         if service_name in self.service_addr_dict:
             self.service_addr_dict[service_name].append(service_addr)
@@ -99,7 +102,7 @@ class RegisterCenter:
             for server_addr in list(self.hb_dict.keys()):
                 heartbeat_time = self.hb_dict[server_addr]
                 if time.time() - heartbeat_time > 70:
-                    print(f"Server {server_addr} removed due to timeout")
+                    print(f"服务器 {server_addr} 超时，已移除")
                     # 将映射全部删除
                     del self.addr_server_dict[server_addr]
                     del self.hb_dict[server_addr]
@@ -112,6 +115,7 @@ class RegisterCenter:
                         if addr == server_addr:
                             self.load_list.remove((load, server_addr))
                             break
+            sys.stdout.flush()
             self.lock.release()
 
     def load_fresh(self):
@@ -151,7 +155,6 @@ class RegisterCenter:
                 self.lock.acquire()
                 if addr[0] in self.hb_dict:
                     self.hb_dict[addr[0]] = time.time()
-                    print(f"Heartbeat received from {addr[0]}")
                     response_data = {'status': True}
                 # 处理服务器端已经失效，但是服务器端仍不知道，并继续发送心跳的事件
                 else:
@@ -170,7 +173,9 @@ class RegisterCenter:
             response_data = resp_len.to_bytes(2, 'big', signed=False) + response_data
             acceptSocket.sendall(response_data)
         except Exception as e:
+            self.print_lock.acquire()
             print(e)
+            self.print_lock.release()
         finally:
             acceptSocket.close()
 

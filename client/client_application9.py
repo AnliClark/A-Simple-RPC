@@ -1,4 +1,6 @@
+# coding:utf-8
 from clientstub import *
+from client_function import *
 
 if __name__ == '__main__':
     # 处理命令行参数

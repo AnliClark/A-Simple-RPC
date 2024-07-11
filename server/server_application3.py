@@ -1,3 +1,4 @@
+# coding:utf-8
 from server_stub import *
 from server_function import *
 

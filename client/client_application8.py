@@ -1,3 +1,4 @@
+# coding:utf-8
 from clientstub import *
 from client_function import *
 
