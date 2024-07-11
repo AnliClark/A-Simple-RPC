@@ -18,8 +18,8 @@ request_data{
 }
 或是type为heartbeat:
 request_data{
-    'type': String  # 'register' or 'unregister'      
-    'server_name': String  # 服务端名称
+    'type': String  
+    'port': int  # 服务端监听端口
 }
 返回的消息格式为：
 response_data{
@@ -93,7 +93,7 @@ class RegisterCenter:
 
     def heartbeat_check(self):
         """
-        心跳机制，每隔5s，检查是否有服务器已经70s未有心跳
+        心跳机制，每隔5s，检查是否有服务器已经40s未有心跳
         :return:
         """
         while True:
@@ -101,19 +101,19 @@ class RegisterCenter:
             self.lock.acquire()
             for server_addr in list(self.hb_dict.keys()):
                 heartbeat_time = self.hb_dict[server_addr]
-                if time.time() - heartbeat_time > 70:
+                if time.time() - heartbeat_time > 30:
                     print(f"服务器 {server_addr} 超时，已移除")
                     # 将映射全部删除
                     del self.addr_server_dict[server_addr]
                     del self.hb_dict[server_addr]
-                    for service_name, service_addr_list in self.service_addr_dict.items():
+                    for service_name, service_addr_list in list(self.service_addr_dict.items()):
                         if server_addr in service_addr_list:
                             service_addr_list.remove(server_addr)
                             if len(service_addr_list) == 0:
                                 del self.service_addr_dict[service_name]
                     for load, addr in self.load_list:
                         if addr == server_addr:
-                            self.load_list.remove((load, server_addr))
+                            self.load_list.remove([load, server_addr])
                             break
             self.lock.release()
 
@@ -162,8 +162,8 @@ class RegisterCenter:
                 response_data = {'status': self.register_service(server_name, service_name, service_addr)}
             if request_data['type'] == 'heartbeat':
                 self.lock.acquire()
-                if addr[0] in self.hb_dict:
-                    self.hb_dict[addr[0]] = time.time()
+                if (addr[0], request_data['port']) in self.hb_dict:
+                    self.hb_dict[(addr[0], request_data['port'])] = time.time()
                     response_data = {'status': True}
                 # 处理服务器端已经失效，但是服务器端仍不知道，并继续发送心跳的事件
                 else:

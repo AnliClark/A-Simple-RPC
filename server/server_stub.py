@@ -123,7 +123,7 @@ class ServerStub:
                 heartbeat_socket.connect((self.center_ip, self.center_port))
 
                 # 封装请求消息
-                request_data = {"type": "heartbeat"}
+                request_data = {"type": "heartbeat", "port": self.port}
                 request_data = pickle.dumps(request_data)
                 reqs_len = len(request_data)
                 request_data = reqs_len.to_bytes(2, 'big', signed=False) + request_data
@@ -163,7 +163,7 @@ class ServerStub:
                 sys.stderr.flush()
                 self.err_lock.release()
 
-                time.sleep(60)  # 60s重传一次
+                time.sleep(30)  # 30s重传一次
             except Exception as e:
                 self.err_lock.acquire()
                 print(f"心跳检测失败: {e}")
