@@ -122,7 +122,6 @@ class RegisterCenter:
                         if addr == server_addr:
                             self.load_list.remove((load, server_addr))
                             break
-            sys.stdout.flush()
             self.lock.release()
 
     def load_fresh(self):
@@ -135,7 +134,8 @@ class RegisterCenter:
             for load in self.load_list:
                 load[0] = 0
             self.lock.release()
-            time.sleep(240)
+            time.sleep(60)
+
 
     def handle_request(self, acceptSocket, addr):
         try:

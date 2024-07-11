@@ -4,10 +4,10 @@ from server_function import *
 
 if __name__ == '__main__':
     # 处理命令行参数
-    # ip, port = get_args(sys.argv[1:])  # todo
-    # port = int(port)
-    ip = '192.168.1.20'
-    port = 8800
+    ip, port = get_args(sys.argv[1:])  # todo
+    port = int(port)
+    # ip = '192.168.1.20'
+    # port = 8800
     server_name = 'server1'
     # 创建服务端
     server = ServerStub(ip, port, server_name)
