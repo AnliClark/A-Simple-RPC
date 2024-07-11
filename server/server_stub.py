@@ -20,10 +20,6 @@ class ServerStub:
         self.lock = threading.RLock()
         # 专门用于输出错误信息的锁(防止错误本身就是由self.lock引起的，同时保证输出不乱序)
         self.err_lock = threading.RLock()
-        # 日志文件的名字，用于输出普通日志信息
-        self.log_name = 'server.log'
-        # 错误信息文件的名字，用于保存错误信息
-        self.err_name = 'server_err.log'
 
     def register_service(self, service_dict):
         """
@@ -70,13 +66,11 @@ class ServerStub:
                     resp_len = 0
             response_data = pickle.loads(response_data)
             self.lock.acquire()
-            with open(self.log_name, 'w') as f:
-                sys.stdout = f
-                if not response_data['status']:
-                    print(f"服务{service_name}注册失败")
-                    exit(-1)    # todo
-                print(f"服务{service_name}注册成功")
-                self.lock.release()
+            if not response_data['status']:
+                print(f"服务{service_name}注册失败")
+                exit(-1)    # todo
+            print(f"服务{service_name}注册成功")
+            self.lock.release()
             server_to_register_socket.close()
 
     def handle_request(self, accept_socket):
@@ -112,10 +106,8 @@ class ServerStub:
             accept_socket.sendall(response_data)
         except Exception as e:
             self.err_lock.acquire()
-            with open(self.err_name, 'w') as f:
-                sys.stderr = f
-                print(f"服务{self.server_name}处理请求失败: {e}")
-                self.err_lock.release()
+            print(f"服务{self.server_name}处理请求失败: {e}")
+            self.err_lock.release()
         finally:
             accept_socket.close()
 
@@ -155,37 +147,27 @@ class ServerStub:
                 # 心跳响应失败，在注册中心端已经失效，需重新注册
                 if not response_data['status']:
                     self.lock.acquire()
-                    with open(self.log_name, 'w') as f:
-                        sys.stdout = f
-                        print(f"心跳检测失败，重新注册中")
-                        self.lock.release()
+                    print(f"心跳检测失败，重新注册中")
+                    self.lock.release()
                     self.register_service(self.services)
                 else:
                     self.lock.acquire()
-                    with open(self.log_name, 'w') as f:
-                        sys.stdout = f
-                        print(f"心跳检测成功")
-                        self.lock.release()
-
-                self.lock.acquire()
-                with open(self.log_name, 'w') as f:
-                    sys.stdout = f
-                    sys.stdout.flush()
+                    print(f"心跳检测成功")
                     self.lock.release()
 
+                self.lock.acquire()
+                sys.stdout.flush()
+                self.lock.release()
+
                 self.err_lock.acquire()
-                with open(self.err_name, 'w') as f:
-                    sys.stderr = f
-                    sys.stderr.flush()
-                    self.err_lock.release()
+                sys.stderr.flush()
+                self.err_lock.release()
 
                 time.sleep(60)  # 60s重传一次
             except Exception as e:
                 self.err_lock.acquire()
-                with open(self.err_name, 'w') as f:
-                    sys.stderr = f
-                    print(f"心跳检测失败: {e}")
-                    self.err_lock.release()
+                print(f"心跳检测失败: {e}")
+                self.err_lock.release()
                 time.sleep(5)  # 等待5秒，再次重传
             finally:
                 heartbeat_socket.close()
@@ -204,9 +186,7 @@ class ServerStub:
         server_socket.bind((self.ip, self.port))
         server_socket.listen(15)
         # server_socket.settimeout(10)
-        with open(self.log_name, 'w') as f:
-            sys.stdout = f
-            print(f"服务器{self.server_name}开始运行")
+        print(f"服务器{self.server_name}开始运行")
         # 启动心跳
         hb_thead = threading.Thread(target=self.send_heartbeat)
         hb_thead.demon = True
