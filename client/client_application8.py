@@ -6,7 +6,8 @@ if __name__ == '__main__':
     # 处理命令行参数
     center_ip, center_port = get_args(sys.argv[1:])
     center_port = int(center_port)
-    for _ in range(20):
+    test_time = 20000
+    for _ in range(test_time):
         # 创建客户端
         client = ClientStub(center_ip, center_port)
         # 以本地调用的形式，调用远程服务
@@ -34,3 +35,5 @@ if __name__ == '__main__':
         print(spilt_test)
         # 关闭客户端
         client.close()
+
+    print(f'{test_time}次测试结束')

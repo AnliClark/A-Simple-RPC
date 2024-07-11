@@ -69,8 +69,8 @@ class ServerStub:
                     response_data += server_to_register_socket.recv(resp_len)
                     resp_len = 0
             response_data = pickle.loads(response_data)
+            self.lock.acquire()
             with open(self.log_name, 'w') as f:
-                self.lock.acquire()
                 sys.stdout = f
                 if not response_data['status']:
                     print(f"服务{service_name}注册失败")
@@ -111,8 +111,8 @@ class ServerStub:
             response_data = resp_len.to_bytes(2, 'big', signed=False) + response_data
             accept_socket.sendall(response_data)
         except Exception as e:
+            self.err_lock.acquire()
             with open(self.err_name, 'w') as f:
-                self.err_lock.acquire()
                 sys.stderr = f
                 print(f"服务{self.server_name}处理请求失败: {e}")
                 self.err_lock.release()
@@ -120,6 +120,10 @@ class ServerStub:
             accept_socket.close()
 
     def send_heartbeat(self):
+        """
+        发送心跳，心跳发送失败则重新注册
+        :return:
+        """
         while True:
             try:
                 heartbeat_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -150,22 +154,35 @@ class ServerStub:
                 response_data = pickle.loads(response_data)
                 # 心跳响应失败，在注册中心端已经失效，需重新注册
                 if not response_data['status']:
+                    self.lock.acquire()
                     with open(self.log_name, 'w') as f:
-                        self.lock.acquire()
                         sys.stdout = f
                         print(f"心跳检测失败，重新注册中")
                         self.lock.release()
                     self.register_service(self.services)
                 else:
+                    self.lock.acquire()
                     with open(self.log_name, 'w') as f:
-                        self.lock.acquire()
                         sys.stdout = f
                         print(f"心跳检测成功")
                         self.lock.release()
+
+                self.lock.acquire()
+                with open(self.log_name, 'w') as f:
+                    sys.stdout = f
+                    sys.stdout.flush()
+                    self.lock.release()
+
+                self.err_lock.acquire()
+                with open(self.err_name, 'w') as f:
+                    sys.stderr = f
+                    sys.stderr.flush()
+                    self.err_lock.release()
+
                 time.sleep(60)  # 60s重传一次
             except Exception as e:
+                self.err_lock.acquire()
                 with open(self.err_name, 'w') as f:
-                    self.err_lock.acquire()
                     sys.stderr = f
                     print(f"心跳检测失败: {e}")
                     self.err_lock.release()
