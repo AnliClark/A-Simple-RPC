@@ -50,5 +50,6 @@ if __name__ == '__main__':
         print(lower_test)
         print(cat_test)
         print(spilt_test)
+        time.sleep(0.3)
 
     print(f'{test_time}次测试结束')
