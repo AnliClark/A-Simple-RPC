@@ -107,12 +107,14 @@ class RegisterCenter:
             service_addrs = self.service_addr_dict[service_name]
             # 选择可以提供服务的服务器中负载最小的
             self.load_list.sort(key=lambda x: x[0])
-            for _, addr in self.load_list:
+            i = 0
+            for load, addr in self.load_list:
                 if addr in service_addrs:
                     service_addr = addr
                     # 更新负载
-                    self.load_list[0] = (self.load_list[0][0] + 1, service_addr)
+                    self.load_list[i] = [self.load_list[i][0] + 1, service_addr]
                     break
+                i += 1
         # 释放锁
         self.lock.release()
         return service_addr
