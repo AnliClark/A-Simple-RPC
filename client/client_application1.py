@@ -4,7 +4,7 @@ from client_function import *
 
 """
 说明：
-    本文件与clientapplication2.py和clientapplication3.py都为客户端应用，只在测试函数的参数上有微调。
+    本文件与client_application2.py和client_application3.py都为客户端应用，只在测试函数的参数上有微调。
     客户端应用创建存根实例后，即可通过存根直接以本地调用函数的方式调用远程服务，
     应用使用简单，除了注册中心的地址外无需其他配置
 依赖文件：
@@ -12,10 +12,10 @@ from client_function import *
     此外还有一个获取命令行参数的方法在client_function.py中
 运行说明：
     必须提供注册中心的ip和端口号才能运行，输入格式如下：
-        python clientapplication1.py -i [ip] -p [port]
+        python client_application1.py -i [ip] -p [port]
     其中，ip格式支持ipv4和ipv6
     如需更多说明，可输入：
-        python clientapplication1.py -h    
+        python client_application1.py -h    
 """
 
 if __name__ == '__main__':
@@ -23,7 +23,7 @@ if __name__ == '__main__':
     center_ip, center_port = get_args(sys.argv[1:]) # todo
     center_port = int(center_port)
     # 测试次数（每轮测试都会新建新的存根，并向注册中心申请服务）
-    test_time = 1000
+    test_time = 100
     for _ in range(test_time):
         # 创建客户端
         client = ClientStub(center_ip, center_port)

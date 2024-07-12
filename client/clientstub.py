@@ -179,7 +179,7 @@ class ClientStub:
         except Exception as e:
             print(e)
             client_to_service_socket.close()
-            if not self.has_error:  # 如果没有过异常，则等待5s后重试
+            if not self.has_error:  # 如果没有过异常
                 self.has_error = True
                 return self.call_service(method_name, params)
             else:  # 如果已经有过异常，则直接返回None

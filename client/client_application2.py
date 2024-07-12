@@ -13,7 +13,7 @@ if __name__ == '__main__':
     center_ip, center_port = get_args(sys.argv[1:])
     center_port = int(center_port)
     # 测试次数（每轮测试都会新建新的存根，并向注册中心申请服务）
-    test_time = 1000
+    test_time = 100
     for _ in range(test_time):
         # 创建客户端
         client = ClientStub(center_ip, center_port)

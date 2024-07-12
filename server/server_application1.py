@@ -10,7 +10,12 @@ from server_function import *
 依赖文件：
     服务端存根在server_stub.py中，
     此外，获取命令行参数的方法、服务端能提供的服务以及服务名与服务的映射都封装在了serer_function.py中
-    
+运行说明：
+    必须提供自身监听的端口号才能运行，输入格式如下：
+        python server_application1.py -p [port] (-l [ip]) 
+    其中，ip格式支持ipv4和ipv6
+    如需更多说明，可输入：
+        python server_application1.py -h
 """
 
 if __name__ == '__main__':

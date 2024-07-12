@@ -213,6 +213,7 @@ class RegisterCenter:
         :return:
         """
         while True:
+            time.sleep(60)
             self.lock.acquire()
             for load in self.load_list:
                 load[0] = 0
@@ -226,7 +227,6 @@ class RegisterCenter:
             sys.stderr.flush()
             self.err_lock.release()
 
-            time.sleep(60)
 
     def run(self):
         """
