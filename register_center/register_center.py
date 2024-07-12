@@ -171,9 +171,9 @@ class RegisterCenter:
 
             acceptSocket.sendall(response_data)
         except Exception as e:
-            self.print_lock.acquire()
+            self.err_lock.acquire()
             print(e)
-            self.print_lock.release()
+            self.err_lock.release()
         finally:
             acceptSocket.close()
 
