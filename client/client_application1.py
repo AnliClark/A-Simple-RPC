@@ -2,13 +2,31 @@
 from clientstub import *
 from client_function import *
 
+"""
+说明：
+    本文件与clientapplication2.py和clientapplication3.py都为客户端应用，只在测试函数的参数上有微调。
+    客户端应用创建存根实例后，即可通过存根直接以本地调用函数的方式调用远程服务，
+    应用使用简单，除了注册中心的地址外无需其他配置
+依赖文件：
+    客户端存根在clientstub.py中，
+    此外还有一个获取命令行参数的方法在client_function.py中
+运行说明：
+    必须提供注册中心的ip和端口号才能运行，输入格式如下：
+        python clientapplication1.py -i [ip] -p [port]
+    其中，ip格式支持ipv4和ipv6
+    如需更多说明，可输入：
+        python clientapplication1.py -h    
+"""
+
 if __name__ == '__main__':
-    # 处理命令行参数
-    # ip, port = get_args(sys.argv[1:]) # todo
+    # 处理命令行参数，获取注册中心的ip和端口号
+    # center_ip, center_port = get_args(sys.argv[1:]) # todo
     # center_port = int(center_port)
-    center_ip = '192.168.1.20'  # 127.0.0.1 or 192.168.1.20 todo
+    center_ip = '127.0.0.1'  # 127.0.0.1 or 192.168.1.20
     center_port = 12000
-    for _ in range(20):
+    # 测试次数（每轮测试都会新建新的存根，并向注册中心申请服务）
+    test_time = 20000
+    for _ in range(test_time):
         # 创建客户端
         client = ClientStub(center_ip, center_port)
         # 以本地调用的形式，调用远程服务
@@ -34,5 +52,5 @@ if __name__ == '__main__':
         print(lower_test)
         print(cat_test)
         print(spilt_test)
-        # 关闭客户端
-        client.close()
+
+    print(f'{test_time}次测试结束')

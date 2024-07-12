@@ -1,37 +1,11 @@
-# coding:utf-8
 from server_stub import *
 from server_function import *
 
-
-def get_args(argv):
-    """
-    处理命令行参数
-    :param argv: sys.argv[1:]
-    :return: ip地址和端口号
-    """
-    try:
-        opts, args = getopt.getopt(argv, 'hlp:')
-    except getopt.GetoptError as err:
-        print("错误！必须提供端口参数")
-        exit(-1)
-    ip = '0.0.0.0'
-    for opt, arg in opts:
-        if opt == '-h':
-            print('参数说明：')
-            print('-l ip[optional]  : 服务端监听的ip地址，可为IPv4或IPv6，可以为空，默认为0.0.0.0')
-            print('-p port          : 服务端监听的端口号，不得为空')
-            exit(0)
-        elif opt == '-l':
-            if arg is None:
-                ip = '0.0.0.0'
-            else:
-                ip = arg
-        elif opt == '-p':
-            port = arg
-        else:
-            print('invalid option')
-    return ip, port
-
+"""
+说明：
+    本文件与server_application1.py都为服务器应用，仅在服务器名上有差别
+    详细可见sever_application1.py
+"""
 
 if __name__ == '__main__':
     # 处理命令行参数
@@ -40,7 +14,7 @@ if __name__ == '__main__':
     server_name = 'server2'
     # 创建服务端
     server = ServerStub(ip, port, server_name)
-    # 服务端注册服务（服务器提供的服务在sever_function.py中定义）
+    # 服务端注册服务（服务器提供的服务与server_dict在sever_function.py中定义，）
     server.register_service(service_dict)
     # 启动服务端
     server.run_server()

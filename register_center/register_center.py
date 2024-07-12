@@ -5,38 +5,54 @@ from socket import *
 import threading
 import pickle
 
-# todo password
 """
-说明：本文件为注册中心的文件
-规定发送的消息都具有2 bytes的，大端存储的头部，用于存储消息长度
-规定server发送给注册中心的消息的格式为：
-request_data{
-    'type': String  # 'register' or 'unregister'      
-    'server_name': String  # 服务端名称
-    'port': int  # 服务端监听端口
-    'service_name': String  # 服务名称
-}
-或是type为heartbeat:
-request_data{
-    'type': String  
-    'port': int  # 服务端监听端口
-}
-返回的消息格式为：
-response_data{
-    'status': Boolean
-}
-规定client发送给注册中心的消息的格式为：
-request_data{
-    'type': String  # 'find'
-    'method_name': String
-}
-返回的消息格式为：
-response_data{
-    'service_addr': (String, int)  # (ip, port) 也可能返回None(失败)
-}
+说明：
+    本文件为注册中心的文件，可以登记服务器的服务，并为客户端提供服务的地址，
+    同时还会通过心跳机制保障服务端的存活，且会保证负载均衡
+消息格式定义：
+    均有2字节的头部，以大端形式存储消息长度
+    
+    server to register:
+        register:
+            request_data{
+                'type': String  # 'register'    
+                'server_name': String  # 服务端名称
+                'port': int  # 服务端监听端口
+                'service_name': String  # 服务名称
+            }
+        heartbeat:
+            request_data{
+                'type': String    # 'heartbeat'
+                'port': int  # 服务端监听端口
+            }
+        
+        response_data{
+            'status': Boolean
+        }
+        
+    client to register:
+        request_data = {
+            'type': String # 'find'
+            'method_name': String  # 请求的方法名称
+        }
+        response_data = {
+           'service_addr': (ip,port) or None  # 服务地址或None（失败）
+        }
 """
 
+
 class RegisterCenter:
+    """
+    RegisterCenter类，用于实现注册中心的功能，实例化后，只需调用run()方法即可启动注册中心
+    RegisterCenter有6个方法：
+        register_service: 注册服务
+        find_service: 查找服务
+        handle_request: 处理请求
+        heartbeat_check: 心跳检测
+        load_fresh: 负载均衡
+        run: 启动注册中心
+
+    """
     def __init__(self):
         # 已注册的服务器的地址与名称的映射
         self.addr_server_dict = {}
@@ -52,16 +68,26 @@ class RegisterCenter:
         self.err_lock = threading.RLock()
 
     def register_service(self, server_name, service_name, service_addr):
+        """
+        注册服务
+        :param server_name: 服务器名称
+        :param service_name: 服务名称
+        :param service_addr: 服务器地址(ip,addr)
+        :return:
+        """
         # 获取锁
         self.lock.acquire()
-        # 如果注册中心中没有记录过服务器
+        # 如果注册中心中没有记录过服务器，更新负载列表
         if service_addr not in self.service_addr_dict:
             self.load_list.append([0, service_addr])
+        # 添加服务器地址与名称的映射
         self.addr_server_dict[service_addr] = server_name
+        # 添加服务名称与服务器地址的映射
         if service_name in self.service_addr_dict:
             self.service_addr_dict[service_name].append(service_addr)
         else:
             self.service_addr_dict[service_name] = [service_addr]
+        # 添加心跳
         self.hb_dict[service_addr] = time.time()
         # 释放锁
         self.lock.release()
@@ -91,6 +117,66 @@ class RegisterCenter:
         self.lock.release()
         return service_addr
 
+    def handle_request(self, acceptSocket, addr):
+        """
+        处理各类请求
+        :param acceptSocket:
+        :param addr:
+        :return:
+        """
+
+        try:
+            # 接收消息
+            # 读取头部长度，按量取走缓冲区数据
+            requ_len = acceptSocket.recv(2)
+            requ_len = int.from_bytes(requ_len, 'big', signed=False)
+            request_data = b''
+            while requ_len != 0:
+                if requ_len >= 1024:
+                    request_data += acceptSocket.recv(1024)
+                    requ_len -= 1024
+                else:
+                    request_data += acceptSocket.recv(requ_len)
+                    requ_len = 0
+            request_data = pickle.loads(request_data)  # 序列化
+
+            # 注册服务类型
+            if request_data['type'] == 'register':
+                server_name = request_data['server_name']
+                server_port = request_data['port']
+                service_name = request_data['service_name']
+                service_addr = (addr[0], server_port)
+                response_data = {'status': self.register_service(server_name, service_name, service_addr)}
+            # 心跳包类型
+            elif request_data['type'] == 'heartbeat':
+                self.lock.acquire()
+                if (addr[0], request_data['port']) in self.hb_dict:
+                    self.hb_dict[(addr[0], request_data['port'])] = time.time()
+                    response_data = {'status': True}
+                # 处理服务器端已经失效，但是服务器端仍不知道，并继续发送心跳的事件
+                else:
+                    response_data = {'status': False}
+                self.lock.release()
+            # 发现服务类型
+            elif request_data['type'] == 'find':
+                service_name = request_data['method_name']
+                service_addr = self.find_service(service_name)
+                response_data = {'service_addr': service_addr}
+
+            # 处理要返回的消息
+            response_data = pickle.dumps(response_data)
+            # 读取消息长度，并附加到消息头部
+            resp_len = len(response_data)
+            response_data = resp_len.to_bytes(2, 'big', signed=False) + response_data
+
+            acceptSocket.sendall(response_data)
+        except Exception as e:
+            self.print_lock.acquire()
+            print(e)
+            self.print_lock.release()
+        finally:
+            acceptSocket.close()
+
     def heartbeat_check(self):
         """
         心跳机制，每隔5s，检查是否有服务器已经40s未有心跳
@@ -113,13 +199,15 @@ class RegisterCenter:
                                 del self.service_addr_dict[service_name]
                     for load, addr in self.load_list:
                         if addr == server_addr:
-                            self.load_list.remove([load, server_addr])
+                            self.load_list.remove([load, addr])
                             break
             self.lock.release()
 
     def load_fresh(self):
         """
-        用于定时清空负载记录，防止记录的负载数量过大
+        用于定时清空负载记录：
+            防止新加入的服务器在短时内收到大量负载
+            防止记录的负载数量过大
         :return:
         """
         while True:
@@ -128,65 +216,15 @@ class RegisterCenter:
                 load[0] = 0
             self.lock.release()
 
+            # 刷新缓存区，便于测试
             self.lock.acquire()
             sys.stdout.flush()
             self.lock.release()
-
             self.err_lock.acquire()
             sys.stderr.flush()
             self.err_lock.release()
 
             time.sleep(60)
-
-
-    def handle_request(self, acceptSocket, addr):
-        try:
-            # 接收消息
-            # 读取头部长度，按量取走缓冲区数据
-            requ_len = acceptSocket.recv(2)
-            requ_len = int.from_bytes(requ_len, 'big', signed=False)
-            request_data = b''
-            while requ_len != 0:
-                if requ_len >= 1024:
-                    request_data += acceptSocket.recv(1024)
-                    requ_len -= 1024
-                else:
-                    request_data += acceptSocket.recv(requ_len)
-                    requ_len = 0
-            request_data = pickle.loads(request_data)
-            if request_data['type'] == 'register':
-                server_name = request_data['server_name']
-                server_port = request_data['port']
-                service_name = request_data['service_name']
-                service_addr = (addr[0], server_port)
-                response_data = {'status': self.register_service(server_name, service_name, service_addr)}
-            if request_data['type'] == 'heartbeat':
-                self.lock.acquire()
-                if (addr[0], request_data['port']) in self.hb_dict:
-                    self.hb_dict[(addr[0], request_data['port'])] = time.time()
-                    response_data = {'status': True}
-                # 处理服务器端已经失效，但是服务器端仍不知道，并继续发送心跳的事件
-                else:
-                    response_data = {'status': False}
-                self.lock.release()
-
-            elif request_data['type'] == 'find':
-                service_name = request_data['method_name']
-                service_addr = self.find_service(service_name)
-                response_data = {'service_addr': service_addr}
-
-            # 处理要返回的消息
-            response_data = pickle.dumps(response_data)
-            # 读取消息长度，并附加到消息头部
-            resp_len = len(response_data)
-            response_data = resp_len.to_bytes(2, 'big', signed=False) + response_data
-            acceptSocket.sendall(response_data)
-        except Exception as e:
-            self.print_lock.acquire()
-            print(e)
-            self.print_lock.release()
-        finally:
-            acceptSocket.close()
 
     def run(self):
         """
@@ -220,6 +258,7 @@ class RegisterCenter:
 
 if __name__ == '__main__':
     register_center = RegisterCenter()
+    # 启动注册中心
     register_center.run()
 
 

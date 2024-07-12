@@ -1,5 +1,16 @@
 # coding:utf-8
-import sys, getopt
+import getopt
+
+"""
+说明：
+    本文件为服务器应用封装基础函数和能提供的服务
+    包含：
+        获取命令行的函数
+        可以提供的服务
+        一个保存了服务名和服务映射的字典
+"""
+
+
 def get_args(argv):
     """
     处理命令行参数
@@ -7,16 +18,24 @@ def get_args(argv):
     :return: ip地址和端口号
     """
     try:
+        # 获取命令行参数，指定ip和端口选项必须提供参数
         opts, args = getopt.getopt(argv, 'hlp:')
     except getopt.GetoptError as err:
         print("错误！必须提供端口参数")
         exit(-1)
     ip = '0.0.0.0'
+    port = None
     for opt, arg in opts:
         if opt == '-h':
+            print('用法：')
+            print('    python [name].py -options [arg]')
             print('参数说明：')
-            print('-l ip[optional]  : 服务端监听的ip地址，可为IPv4或IPv6，可以为空，默认为0.0.0.0')
-            print('-p port          : 服务端监听的端口号，不得为空')
+            print('-l ip(optional)  : 服务端监听的ip地址，可为IPv4或IPv6，可以为空，默认为0.0.0.0')
+            print('-p port          : 服务端监听的端口号，不得为空，如需运行文件，必须提供该参数')
+            print('其中，[name].py如不在当前目录下，需指定相对路径或绝对路径')
+            print('示例：')
+            print('    >python server_application1.py -i 192.168.1.21 -p 8080')
+            print('    >python server_application2.py -h')
             exit(0)
         elif opt == '-l':
             if arg is None:
@@ -27,6 +46,17 @@ def get_args(argv):
             port = arg
         else:
             print('invalid option')
+    if port is None:
+        print('用法：')
+        print('    python [name].py -options [arg]')
+        print('参数说明：')
+        print('-l ip(optional)  : 服务端监听的ip地址，可为IPv4或IPv6，可以为空，默认为0.0.0.0')
+        print('-p port          : 服务端监听的端口号，不得为空，如需运行文件，必须提供该参数')
+        print('其中，[name].py如不在当前目录下，需指定相对路径或绝对路径')
+        print('示例：')
+        print('    >python server_application1.py -i 192.168.1.21 -p 8080')
+        print('    >python server_application2.py -h')
+        exit(-1)
     return ip, port
 
 
@@ -77,6 +107,7 @@ def my_split(s, sep):
     return s.split(sep)
 
 
+# 以下为服务名和服务映射的字典
 service_dict = {'my_add': my_add,
                 'my_sub': my_sub,
                 'my_mul': my_mul,
