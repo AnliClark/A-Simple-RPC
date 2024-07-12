@@ -20,10 +20,8 @@ from client_function import *
 
 if __name__ == '__main__':
     # 处理命令行参数，获取注册中心的ip和端口号
-    # center_ip, center_port = get_args(sys.argv[1:]) # todo
-    # center_port = int(center_port)
-    center_ip = '127.0.0.1'  # 127.0.0.1 or 192.168.1.20
-    center_port = 12000
+    center_ip, center_port = get_args(sys.argv[1:]) # todo
+    center_port = int(center_port)
     # 测试次数（每轮测试都会新建新的存根，并向注册中心申请服务）
     test_time = 20000
     for _ in range(test_time):
