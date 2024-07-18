@@ -5,8 +5,6 @@ import pickle
 import sys
 import threading
 import time
-import asyncio
-import concurrent.futures
 
 """
 说明：
@@ -65,9 +63,9 @@ class ServerStub:
         # 服务名称与服务函数的映射
         self.services = {}
         # 互斥锁（保证并发安全，主要用于保护self.services与输出信息）
-        self.lock = asyncio.Lock()
+        self.lock = threading.RLock()
         # 专门用于输出错误信息的锁(防止错误本身就是由self.lock引起的，同时保证输出不乱序)
-        self.err_lock = asyncio.Lock()
+        self.err_lock = threading.RLock()
         # 异常的标志位，标识是否已有过异常，对于小的异常，可以根据标识位决定是否要重试
         self.has_error = False
 
@@ -121,17 +119,21 @@ class ServerStub:
                         response_data += server_to_register_socket.recv(resp_len)
                         resp_len = 0
                 response_data = pickle.loads(response_data)   # 反序列化
-                async with self.lock:
-                    if not response_data['status']:
-                        raise Exception(f"服务{service_name}注册失败")
-                    elif response_data is None:
-                        raise Exception(f"服务{service_name}注册失败")
-                    else:
-                        print(f"服务{service_name}注册成功")
+                # self.lock.acquire()
+                if not response_data['status']:
+                    # self.lock.release()
+                    raise Exception(f"服务{service_name}注册失败")
+                elif response_data is None:
+                    # self.lock.release()
+                    raise Exception(f"服务{service_name}注册失败")
+                else:
+                    print(f"服务{service_name}注册成功")
+                    # self.lock.release()
                 self.has_error = False  # 重置异常标志位
             except Exception as e:
-                async with self.lock:
-                    print(e)
+                # self.err_lock.acquire()
+                print(e)
+                # self.err_lock.release()
                 server_to_register_socket.close()
                 if not self.has_error:  # 如果没有过异常，则重试
                     self.has_error = True
@@ -142,7 +144,7 @@ class ServerStub:
             finally:
                 server_to_register_socket.close()
 
-    async def handle_request(self, accept_socket):
+    def handle_request(self, accept_socket):
         """
         处理请求
         :param accept_socket:
@@ -151,14 +153,17 @@ class ServerStub:
         try:
             # 接收数据并反序列化
             # 读取头部长度，按量取走缓冲区数据
-            requ_len = await asyncio.get_event_loop().sock_recv(accept_socket, 2)
+            requ_len = accept_socket.recv(2)
             requ_len = int.from_bytes(requ_len, 'big', signed=False)
             request_data = b''
             # 按照长度，从缓存区取走数据
             while requ_len != 0:
-                chunk = await asyncio.get_event_loop().sock_recv(accept_socket, min(requ_len, 1024))
-                request_data += chunk
-                requ_len -= len(chunk)
+                if requ_len >= 1024:
+                    request_data += accept_socket.recv(1024)
+                    requ_len -= 1024
+                else:
+                    request_data += accept_socket.recv(requ_len)
+                    requ_len = 0
             request_data = pickle.loads(request_data)  # 反序列化
             # 异常的请求消息
             if request_data is None:
@@ -182,15 +187,16 @@ class ServerStub:
             # 将长度转为字节流，以大端方式存储，并将长度作为头部，加在消息之前
             response_data = resp_len.to_bytes(2, 'big', signed=False) + response_data
             # 发送给客户端
-            await asyncio.get_event_loop().sock_sendall(accept_socket, response_data)
+            accept_socket.sendall(response_data)
 
         except Exception as e:
-            async with self.err_lock:
-                print(f"服务{self.server_name}处理请求失败: {e}")
+            # self.err_lock.acquire()
+            print(f"服务{self.server_name}处理请求失败: {e}")
+            # self.err_lock.release()
         finally:
             accept_socket.close()
 
-    async def send_heartbeat(self):
+    def send_heartbeat(self):
         """
         发送心跳，心跳发送失败则重新注册
         :return:
@@ -204,7 +210,7 @@ class ServerStub:
                     heartbeat_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
                 heartbeat_socket.settimeout(10)
                 heartbeat_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 设置端口重用
-                await asyncio.get_event_loop().sock_connect(heartbeat_socket, (self.center_ip, self.center_port))
+                heartbeat_socket.connect((self.center_ip, self.center_port))
 
                 # 封装请求消息
                 request_data = {"type": "heartbeat", "port": self.port}
@@ -215,17 +221,20 @@ class ServerStub:
                 request_data = reqs_len.to_bytes(2, 'big', signed=False) + request_data
 
                 # 发送请求
-                await asyncio.get_event_loop().sock_sendall(heartbeat_socket, request_data)
+                heartbeat_socket.sendall(request_data)
 
                 # 接收响应
                 # 读取长度，按量取走缓冲区数据
-                resp_len = await asyncio.get_event_loop().sock_recv(heartbeat_socket, 2)
+                resp_len = heartbeat_socket.recv(2)
                 resp_len = int.from_bytes(resp_len, 'big', signed=False)
                 response_data = b''
                 while resp_len != 0:
-                    chunk = await asyncio.get_event_loop().sock_recv(heartbeat_socket, min(resp_len, 1024))
-                    response_data += chunk
-                    resp_len -= len(chunk)
+                    if resp_len >= 1024:
+                        response_data += heartbeat_socket.recv(1024)
+                        resp_len -= 1024
+                    else:
+                        response_data += heartbeat_socket.recv(resp_len)
+                        resp_len = 0
                 response_data = pickle.loads(response_data)  # 反序列化
                 # 心跳响应失败，在注册中心端已经失效，需重新注册
                 if not response_data['status']:
@@ -250,7 +259,7 @@ class ServerStub:
                 print('debug: 缓存行已清空')
                 # self.lock.release()
 
-                await asyncio.sleep(10)  # todo
+                time.sleep(10)  # 30s重传一次
             except Exception as e:
                 # self.err_lock.acquire()
                 print(e)
@@ -260,11 +269,11 @@ class ServerStub:
                 elif e == "心跳检测失败，重新注册中":  # 该情况为注册中心已把服务器移除，故需重新注册
                     self.register_service(self.services)
                 else:
-                    await asyncio.sleep(5)  # 等待5秒，再次重传
+                    time.sleep(5)  # 等待5秒，再次重传
             finally:
                 heartbeat_socket.close()
 
-    async def run_server(self):
+    def run_server(self):
         """
         运行服务
         :return:
@@ -277,11 +286,14 @@ class ServerStub:
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 允许端口复用
         server_socket.bind((self.ip, self.port))
         server_socket.listen(15)
-        server_socket.setblocking(False)
         print(f"服务器{self.server_name}开始运行")
         # 启动心跳
-        asyncio.create_task(self.send_heartbeat())
+        hb_thead = threading.Thread(target=self.send_heartbeat)
+        hb_thead.demon = True   # 设为守护子线程，主线程停止，则关闭心跳
+        hb_thead.start()
         # 接收请求
         while True:
-            accept_socket, addr = await asyncio.get_event_loop().sock_accept(server_socket)
-            asyncio.create_task(self.handle_request(accept_socket))
+            accept_socket, addr = server_socket.accept()
+            handle_thread = threading.Thread(target=self.handle_request, args=(accept_socket,))
+            handle_thread.daemon = True  # 设为守护子线程，主线程停止，则关闭心跳
+            handle_thread.start()

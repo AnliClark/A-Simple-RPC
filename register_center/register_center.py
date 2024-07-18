@@ -4,8 +4,6 @@ import time
 from socket import *
 import threading
 import pickle
-import asyncio
-import concurrent.futures
 
 """
 说明：
@@ -65,9 +63,9 @@ class RegisterCenter:
         # 负载与服务器地址的二元列表的列表  [[load, addr],]
         self.load_list = []
         # 互斥锁，保证并发安全
-        self.lock = asyncio.Lock()
+        self.lock = threading.RLock()
         # 专门用于输出错误信息的锁(防止错误本身就是由self.lock引起的，同时保证输出不乱序)
-        self.err_lock = asyncio.Lock()
+        self.err_lock = threading.RLock()
 
     def register_service(self, server_name, service_name, service_addr):
         """
@@ -78,19 +76,21 @@ class RegisterCenter:
         :return:
         """
         # 获取锁
-        async with self.lock:
-            # 如果注册中心中没有记录过服务器，更新负载列表
-            if service_addr not in self.service_addr_dict:
-                self.load_list.append([0, service_addr])
-            # 添加服务器地址与名称的映射
-            self.addr_server_dict[service_addr] = server_name
-            # 添加服务名称与服务器地址的映射
-            if service_name in self.service_addr_dict:
-                self.service_addr_dict[service_name].append(service_addr)
-            else:
-                self.service_addr_dict[service_name] = [service_addr]
-            # 添加心跳
-            self.hb_dict[service_addr] = time.time()
+        self.lock.acquire()
+        # 如果注册中心中没有记录过服务器，更新负载列表
+        if service_addr not in self.service_addr_dict:
+            self.load_list.append([0, service_addr])
+        # 添加服务器地址与名称的映射
+        self.addr_server_dict[service_addr] = server_name
+        # 添加服务名称与服务器地址的映射
+        if service_name in self.service_addr_dict:
+            self.service_addr_dict[service_name].append(service_addr)
+        else:
+            self.service_addr_dict[service_name] = [service_addr]
+        # 添加心跳
+        self.hb_dict[service_addr] = time.time()
+        # 释放锁
+        self.lock.release()
         return True
 
     def find_service(self, service_name):
@@ -100,26 +100,28 @@ class RegisterCenter:
         :return: (ip, port) 或 None(失败)
         """
         # 获取锁
-        async with self.lock:
-            service_addr = None
-            if service_name in self.service_addr_dict:
-                # 根据名字获取地址列表
-                service_addrs = self.service_addr_dict[service_name]
-                # 选择可以提供服务的服务器中负载最小的
-                self.load_list.sort(key=lambda x: x[0])
-                i = 0
-                for load, addr in self.load_list:
-                    if addr in service_addrs:
-                        service_addr = addr
-                        # 更新负载
-                        self.load_list[i] = [self.load_list[i][0] + 1, service_addr]
-                        break
-                    i += 1
+        self.lock.acquire()
+        service_addr = None
+        if service_name in self.service_addr_dict:
+            # 根据名字获取地址列表
+            service_addrs = self.service_addr_dict[service_name]
+            # 选择可以提供服务的服务器中负载最小的
+            self.load_list.sort(key=lambda x: x[0])
+            i = 0
+            for load, addr in self.load_list:
+                if addr in service_addrs:
+                    service_addr = addr
+                    # 更新负载
+                    self.load_list[i] = [self.load_list[i][0] + 1, service_addr]
+                    break
+                i += 1
+        # 释放锁
+        self.lock.release()
         return service_addr
 
-    async def handle_request(self, acceptSocket, addr):
+    def handle_request(self, acceptSocket, addr):
         """
-        异步处理各类请求
+        处理各类请求
         :param acceptSocket:
         :param addr:
         :return:
@@ -128,13 +130,16 @@ class RegisterCenter:
         try:
             # 接收消息
             # 读取头部长度，按量取走缓冲区数据
-            requ_len = await asyncio.get_event_loop().sock_recv(acceptSocket, 2)
+            requ_len = acceptSocket.recv(2)
             requ_len = int.from_bytes(requ_len, 'big', signed=False)
             request_data = b''
             while requ_len != 0:
-                chunk = await asyncio.get_event_loop().sock_recv(acceptSocket, min(requ_len, 1024))
-                request_data += chunk
-                requ_len -= len(chunk)
+                if requ_len >= 1024:
+                    request_data += acceptSocket.recv(1024)
+                    requ_len -= 1024
+                else:
+                    request_data += acceptSocket.recv(requ_len)
+                    requ_len = 0
             request_data = pickle.loads(request_data)  # 序列化
 
             # 注册服务类型
@@ -146,14 +151,15 @@ class RegisterCenter:
                 response_data = {'status': self.register_service(server_name, service_name, service_addr)}
             # 心跳包类型
             elif request_data['type'] == 'heartbeat':
-                async with self.lock:
-                    if (addr[0], request_data['port']) in self.hb_dict:
-                        self.hb_dict[(addr[0], request_data['port'])] = time.time()
-                        response_data = {'status': True}
-                        print(f"服务器 {addr} 心跳成功")
-                    # 处理服务器端已经失效，但是服务器端仍不知道，并继续发送心跳的事件
-                    else:
-                        response_data = {'status': False}
+                self.lock.acquire()
+                if (addr[0], request_data['port']) in self.hb_dict:
+                    self.hb_dict[(addr[0], request_data['port'])] = time.time()
+                    response_data = {'status': True}
+                    print(f"服务器 {addr} 心跳成功")
+                # 处理服务器端已经失效，但是服务器端仍不知道，并继续发送心跳的事件
+                else:
+                    response_data = {'status': False}
+                self.lock.release()
             # 发现服务类型
             elif request_data['type'] == 'find':
                 service_name = request_data['method_name']
@@ -166,39 +172,41 @@ class RegisterCenter:
             resp_len = len(response_data)
             response_data = resp_len.to_bytes(2, 'big', signed=False) + response_data
 
-            await asyncio.get_event_loop().sock_sendall(acceptSocket, response_data)
+            acceptSocket.sendall(response_data)
         except Exception as e:
-            async with self.err_lock:
-                print(e)
+            # self.err_lock.acquire()
+            print(e)
+            # self.err_lock.release()
         finally:
             acceptSocket.close()
 
-    async def heartbeat_check(self):
+    def heartbeat_check(self):
         """
         心跳机制，每隔5s，检查是否有服务器已经40s未有心跳
         :return:
         """
         while True:
-            await asyncio.sleep(5)
-            async with self.lock:
-                for server_addr in list(self.hb_dict.keys()):
-                    heartbeat_time = self.hb_dict[server_addr]
-                    if time.time() - heartbeat_time > 40:
-                        print(f"服务器 {server_addr} 超时，已移除")
-                        # 将映射全部删除
-                        del self.addr_server_dict[server_addr]
-                        del self.hb_dict[server_addr]
-                        for service_name, service_addr_list in list(self.service_addr_dict.items()):
-                            if server_addr in service_addr_list:
-                                service_addr_list.remove(server_addr)
-                                if len(service_addr_list) == 0:
-                                    del self.service_addr_dict[service_name]
-                        for load, addr in self.load_list:
-                            if addr == server_addr:
-                                self.load_list.remove([load, addr])
-                                break
+            time.sleep(5)
+            self.lock.acquire()
+            for server_addr in list(self.hb_dict.keys()):
+                heartbeat_time = self.hb_dict[server_addr]
+                if time.time() - heartbeat_time > 40:
+                    print(f"服务器 {server_addr} 超时，已移除")
+                    # 将映射全部删除
+                    del self.addr_server_dict[server_addr]
+                    del self.hb_dict[server_addr]
+                    for service_name, service_addr_list in list(self.service_addr_dict.items()):
+                        if server_addr in service_addr_list:
+                            service_addr_list.remove(server_addr)
+                            if len(service_addr_list) == 0:
+                                del self.service_addr_dict[service_name]
+                    for load, addr in self.load_list:
+                        if addr == server_addr:
+                            self.load_list.remove([load, addr])
+                            break
+            self.lock.release()
 
-    async def load_fresh(self):
+    def load_fresh(self):
         """
         用于定时清空负载记录：
             防止新加入的服务器在短时内收到大量负载
@@ -206,15 +214,25 @@ class RegisterCenter:
         :return:
         """
         while True:
-            await asyncio.sleep(60)
-            async with self.lock:
-                for load in self.load_list:
-                    load[0] = 0
-                sys.stdout.flush()
-                sys.stderr.flush()
-                print('debug: 缓存行已清空')
+            time.sleep(60)
+            self.lock.acquire()
+            for load in self.load_list:
+                load[0] = 0
+            self.lock.release()
 
-    async def run(self):
+            # 刷新缓存区，便于测试
+            # self.lock.acquire()
+            sys.stdout.flush()
+            # self.lock.release()
+            # self.err_lock.acquire()
+            sys.stderr.flush()
+            # self.err_lock.release()
+
+            # self.lock.acquire()
+            print('debug: 缓存行已清空')
+            # self.lock.release()
+
+    def run(self):
         """
         启动注册中心
         :return:
@@ -227,24 +245,27 @@ class RegisterCenter:
         # 绑定端口并开启监听
         centerSocket.bind((centerName, centerPort))
         centerSocket.listen(5)
-        centerSocket.setblocking(False)
         print("注册中心已启动")
         # 启动心跳检测
-        asyncio.create_task(self.heartbeat_check())
+        hb_thread = threading.Thread(target=self.heartbeat_check)
+        hb_thread.dameon = True
+        hb_thread.start()
         # 启动负载均衡
-        asyncio.create_task(self.load_fresh())
+        load_thread = threading.Thread(target=self.load_fresh)
+        load_thread.dameon = True
+        load_thread.start()
         # 接收客户端连接
         while True:
             # 等待接收客户端连接
-            acceptSocket, addr = await asyncio.get_event_loop().sock_accept(centerSocket)  # 接收rpc服务端与客户端连接
+            acceptSocket, addr = centerSocket.accept()  # 接收rpc服务端与客户端连接
             acceptSocket.settimeout(10)
-            asyncio.create_task(self.handle_request(acceptSocket, addr))
+            threading.Thread(target=self.handle_request, args=(acceptSocket, addr,)).start()
 
 
 if __name__ == '__main__':
     register_center = RegisterCenter()
     # 启动注册中心
-    asyncio.run(register_center.run())
+    register_center.run()
 
 
 
