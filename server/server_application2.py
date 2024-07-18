@@ -17,4 +17,4 @@ if __name__ == '__main__':
     # 服务端注册服务（服务器提供的服务与server_dict在sever_function.py中定义，）
     server.register_service(service_dict)
     # 启动服务端
-    asyncio.run(server.run_server())
+    server.run_server()

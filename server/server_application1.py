@@ -29,4 +29,3 @@ if __name__ == '__main__':
     server.register_service(service_dict)
     # 启动服务端
     server.run_server()
-    asyncio.run(server.run_server())
