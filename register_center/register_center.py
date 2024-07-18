@@ -189,7 +189,7 @@ class RegisterCenter:
             self.lock.acquire()
             for server_addr in list(self.hb_dict.keys()):
                 heartbeat_time = self.hb_dict[server_addr]
-                if time.time() - heartbeat_time > 30:
+                if time.time() - heartbeat_time > 40:
                     print(f"服务器 {server_addr} 超时，已移除")
                     # 将映射全部删除
                     del self.addr_server_dict[server_addr]
