@@ -227,6 +227,9 @@ class RegisterCenter:
             sys.stderr.flush()
             self.err_lock.release()
 
+            self.lock.acquire()
+            print('debug: 缓存行已清空')
+            self.lock.release()
 
     def run(self):
         """
