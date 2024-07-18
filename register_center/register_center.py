@@ -132,7 +132,6 @@ class RegisterCenter:
             # 读取头部长度，按量取走缓冲区数据
             requ_len = acceptSocket.recv(2)
             requ_len = int.from_bytes(requ_len, 'big', signed=False)
-            print(f"debug: 收到请求，长度为{requ_len}")
             request_data = b''
             while requ_len != 0:
                 if requ_len >= 1024:

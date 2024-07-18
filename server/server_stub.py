@@ -239,28 +239,28 @@ class ServerStub:
                 elif response_data is None:
                     raise Exception(f"注册中心返回空，重发心跳包")
                 else:
-                    self.lock.acquire()
+                    # self.lock.acquire()
                     print(f"心跳检测成功")
-                    self.lock.release()
+                    # self.lock.release()
 
                 # 刷新缓存行，便于测试
-                self.lock.acquire()
+                # self.lock.acquire()
                 sys.stdout.flush()
-                self.lock.release()
+                # self.lock.release()
 
-                self.err_lock.acquire()
+                # self.err_lock.acquire()
                 sys.stderr.flush()
-                self.err_lock.release()
+                # self.err_lock.release()
 
-                self.lock.acquire()
+                # self.lock.acquire()
                 print('debug: 缓存行已清空')
-                self.lock.release()
+                # self.lock.release()
 
                 time.sleep(30)  # 30s重传一次
             except Exception as e:
-                self.err_lock.acquire()
+                # self.err_lock.acquire()
                 print(e)
-                self.err_lock.release()
+                # self.err_lock.release()
                 if e == "注册中心返回空，重发心跳包":
                     pass
                 elif e == "心跳检测失败，重新注册中":  # 该情况为注册中心已把服务器移除，故需重新注册
