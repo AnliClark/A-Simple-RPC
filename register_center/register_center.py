@@ -78,21 +78,19 @@ class RegisterCenter:
         :return:
         """
         # 获取锁
-        self.lock.acquire()
-        # 如果注册中心中没有记录过服务器，更新负载列表
-        if service_addr not in self.service_addr_dict:
-            self.load_list.append([0, service_addr])
-        # 添加服务器地址与名称的映射
-        self.addr_server_dict[service_addr] = server_name
-        # 添加服务名称与服务器地址的映射
-        if service_name in self.service_addr_dict:
-            self.service_addr_dict[service_name].append(service_addr)
-        else:
-            self.service_addr_dict[service_name] = [service_addr]
-        # 添加心跳
-        self.hb_dict[service_addr] = time.time()
-        # 释放锁
-        self.lock.release()
+        async with self.lock:
+            # 如果注册中心中没有记录过服务器，更新负载列表
+            if service_addr not in self.service_addr_dict:
+                self.load_list.append([0, service_addr])
+            # 添加服务器地址与名称的映射
+            self.addr_server_dict[service_addr] = server_name
+            # 添加服务名称与服务器地址的映射
+            if service_name in self.service_addr_dict:
+                self.service_addr_dict[service_name].append(service_addr)
+            else:
+                self.service_addr_dict[service_name] = [service_addr]
+            # 添加心跳
+            self.hb_dict[service_addr] = time.time()
         return True
 
     def find_service(self, service_name):
@@ -102,23 +100,21 @@ class RegisterCenter:
         :return: (ip, port) 或 None(失败)
         """
         # 获取锁
-        self.lock.acquire()
-        service_addr = None
-        if service_name in self.service_addr_dict:
-            # 根据名字获取地址列表
-            service_addrs = self.service_addr_dict[service_name]
-            # 选择可以提供服务的服务器中负载最小的
-            self.load_list.sort(key=lambda x: x[0])
-            i = 0
-            for load, addr in self.load_list:
-                if addr in service_addrs:
-                    service_addr = addr
-                    # 更新负载
-                    self.load_list[i] = [self.load_list[i][0] + 1, service_addr]
-                    break
-                i += 1
-        # 释放锁
-        self.lock.release()
+        async with self.lock:
+            service_addr = None
+            if service_name in self.service_addr_dict:
+                # 根据名字获取地址列表
+                service_addrs = self.service_addr_dict[service_name]
+                # 选择可以提供服务的服务器中负载最小的
+                self.load_list.sort(key=lambda x: x[0])
+                i = 0
+                for load, addr in self.load_list:
+                    if addr in service_addrs:
+                        service_addr = addr
+                        # 更新负载
+                        self.load_list[i] = [self.load_list[i][0] + 1, service_addr]
+                        break
+                    i += 1
         return service_addr
 
     async def handle_request(self, acceptSocket, addr):
@@ -150,15 +146,14 @@ class RegisterCenter:
                 response_data = {'status': self.register_service(server_name, service_name, service_addr)}
             # 心跳包类型
             elif request_data['type'] == 'heartbeat':
-                self.lock.acquire()
-                if (addr[0], request_data['port']) in self.hb_dict:
-                    self.hb_dict[(addr[0], request_data['port'])] = time.time()
-                    response_data = {'status': True}
-                    print(f"服务器 {addr} 心跳成功")
-                # 处理服务器端已经失效，但是服务器端仍不知道，并继续发送心跳的事件
-                else:
-                    response_data = {'status': False}
-                self.lock.release()
+                async with self.lock:
+                    if (addr[0], request_data['port']) in self.hb_dict:
+                        self.hb_dict[(addr[0], request_data['port'])] = time.time()
+                        response_data = {'status': True}
+                        print(f"服务器 {addr} 心跳成功")
+                    # 处理服务器端已经失效，但是服务器端仍不知道，并继续发送心跳的事件
+                    else:
+                        response_data = {'status': False}
             # 发现服务类型
             elif request_data['type'] == 'find':
                 service_name = request_data['method_name']

@@ -121,21 +121,17 @@ class ServerStub:
                         response_data += server_to_register_socket.recv(resp_len)
                         resp_len = 0
                 response_data = pickle.loads(response_data)   # 反序列化
-                self.lock.acquire()
-                if not response_data['status']:
-                    self.lock.release()
-                    raise Exception(f"服务{service_name}注册失败")
-                elif response_data is None:
-                    self.lock.release()
-                    raise Exception(f"服务{service_name}注册失败")
-                else:
-                    print(f"服务{service_name}注册成功")
-                    self.lock.release()
+                async with self.lock:
+                    if not response_data['status']:
+                        raise Exception(f"服务{service_name}注册失败")
+                    elif response_data is None:
+                        raise Exception(f"服务{service_name}注册失败")
+                    else:
+                        print(f"服务{service_name}注册成功")
                 self.has_error = False  # 重置异常标志位
             except Exception as e:
-                self.err_lock.acquire()
-                print(e)
-                self.err_lock.release()
+                async with self.lock:
+                    print(e)
                 server_to_register_socket.close()
                 if not self.has_error:  # 如果没有过异常，则重试
                     self.has_error = True
