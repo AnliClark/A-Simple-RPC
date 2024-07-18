@@ -220,12 +220,12 @@ class RegisterCenter:
             self.lock.release()
 
             # 刷新缓存区，便于测试
-            self.lock.acquire()
+            # self.lock.acquire()
             sys.stdout.flush()
-            self.lock.release()
-            self.err_lock.acquire()
+            # self.lock.release()
+            # self.err_lock.acquire()
             sys.stderr.flush()
-            self.err_lock.release()
+            # self.err_lock.release()
 
             self.lock.acquire()
             print('debug: 缓存行已清空')
