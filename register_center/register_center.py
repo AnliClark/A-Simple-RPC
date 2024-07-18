@@ -254,7 +254,7 @@ class RegisterCenter:
         while True:
             # 等待接收客户端连接
             acceptSocket, addr = centerSocket.accept()  # 接收rpc服务端与客户端连接
-            acceptSocket.settimeout(10)  # todo
+            acceptSocket.settimeout(10)
             threading.Thread(target=self.handle_request, args=(acceptSocket, addr,)).start()
 
 

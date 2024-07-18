@@ -277,7 +277,6 @@ class ServerStub:
         else:
             server_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 允许端口复用
-        server_socket.settimeout(5)
         server_socket.bind((self.ip, self.port))
         server_socket.listen(15)
         print(f"服务器{self.server_name}开始运行")
