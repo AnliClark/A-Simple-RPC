@@ -65,9 +65,9 @@ class RegisterCenter:
         # 负载与服务器地址的二元列表的列表  [[load, addr],]
         self.load_list = []
         # 互斥锁，保证并发安全
-        self.lock = asyncio.RLock()
+        self.lock = asyncio.Lock()
         # 专门用于输出错误信息的锁(防止错误本身就是由self.lock引起的，同时保证输出不乱序)
-        self.err_lock = asyncio.RLock()
+        self.err_lock = asyncio.Lock()
 
     def register_service(self, server_name, service_name, service_addr):
         """
