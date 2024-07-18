@@ -121,11 +121,14 @@ class ServerStub:
                 response_data = pickle.loads(response_data)   # 反序列化
                 self.lock.acquire()
                 if not response_data['status']:
+                    self.lock.release()
                     raise Exception(f"服务{service_name}注册失败")
-                if response_data is None:
+                elif response_data is None:
+                    self.lock.release()
                     raise Exception(f"服务{service_name}注册失败")
-                print(f"服务{service_name}注册成功")
-                self.lock.release()
+                else:
+                    print(f"服务{service_name}注册成功")
+                    self.lock.release()
                 self.has_error = False  # 重置异常标志位
             except Exception as e:
                 self.err_lock.acquire()
