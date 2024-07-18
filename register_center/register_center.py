@@ -155,6 +155,7 @@ class RegisterCenter:
                 if (addr[0], request_data['port']) in self.hb_dict:
                     self.hb_dict[(addr[0], request_data['port'])] = time.time()
                     response_data = {'status': True}
+                    print(f"服务器 {addr} 心跳成功")
                 # 处理服务器端已经失效，但是服务器端仍不知道，并继续发送心跳的事件
                 else:
                     response_data = {'status': False}

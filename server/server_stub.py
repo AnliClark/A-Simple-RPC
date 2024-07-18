@@ -259,7 +259,7 @@ class ServerStub:
                 print('debug: 缓存行已清空')
                 # self.lock.release()
 
-                time.sleep(30)  # 30s重传一次
+                time.sleep(10)  # 30s重传一次
             except Exception as e:
                 # self.err_lock.acquire()
                 print(e)
