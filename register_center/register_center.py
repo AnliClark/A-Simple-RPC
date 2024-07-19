@@ -155,6 +155,7 @@ class RegisterCenter:
                 if (addr[0], request_data['port']) in self.hb_dict:
                     self.hb_dict[(addr[0], request_data['port'])] = time.time()
                     response_data = {'status': True}
+                    print(f"服务器 {addr} 心跳成功")
                 # 处理服务器端已经失效，但是服务器端仍不知道，并继续发送心跳的事件
                 else:
                     response_data = {'status': False}
@@ -173,9 +174,9 @@ class RegisterCenter:
 
             acceptSocket.sendall(response_data)
         except Exception as e:
-            self.err_lock.acquire()
+            # self.err_lock.acquire()
             print(e)
-            self.err_lock.release()
+            # self.err_lock.release()
         finally:
             acceptSocket.close()
 
@@ -189,7 +190,7 @@ class RegisterCenter:
             self.lock.acquire()
             for server_addr in list(self.hb_dict.keys()):
                 heartbeat_time = self.hb_dict[server_addr]
-                if time.time() - heartbeat_time > 30:
+                if time.time() - heartbeat_time > 40:
                     print(f"服务器 {server_addr} 超时，已移除")
                     # 将映射全部删除
                     del self.addr_server_dict[server_addr]
@@ -220,13 +221,16 @@ class RegisterCenter:
             self.lock.release()
 
             # 刷新缓存区，便于测试
-            self.lock.acquire()
+            # self.lock.acquire()
             sys.stdout.flush()
-            self.lock.release()
-            self.err_lock.acquire()
+            # self.lock.release()
+            # self.err_lock.acquire()
             sys.stderr.flush()
-            self.err_lock.release()
+            # self.err_lock.release()
 
+            # self.lock.acquire()
+            print('debug: 缓存行已清空')
+            # self.lock.release()
 
     def run(self):
         """
@@ -254,7 +258,7 @@ class RegisterCenter:
         while True:
             # 等待接收客户端连接
             acceptSocket, addr = centerSocket.accept()  # 接收rpc服务端与客户端连接
-            acceptSocket.settimeout(10)  # todo
+            acceptSocket.settimeout(10)
             threading.Thread(target=self.handle_request, args=(acceptSocket, addr,)).start()
 
 

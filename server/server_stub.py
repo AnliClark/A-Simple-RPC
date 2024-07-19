@@ -119,18 +119,21 @@ class ServerStub:
                         response_data += server_to_register_socket.recv(resp_len)
                         resp_len = 0
                 response_data = pickle.loads(response_data)   # 反序列化
-                self.lock.acquire()
+                # self.lock.acquire()
                 if not response_data['status']:
+                    # self.lock.release()
                     raise Exception(f"服务{service_name}注册失败")
-                if response_data is None:
+                elif response_data is None:
+                    # self.lock.release()
                     raise Exception(f"服务{service_name}注册失败")
-                print(f"服务{service_name}注册成功")
-                self.lock.release()
+                else:
+                    print(f"服务{service_name}注册成功")
+                    # self.lock.release()
                 self.has_error = False  # 重置异常标志位
             except Exception as e:
-                self.err_lock.acquire()
+                # self.err_lock.acquire()
                 print(e)
-                self.err_lock.release()
+                # self.err_lock.release()
                 server_to_register_socket.close()
                 if not self.has_error:  # 如果没有过异常，则重试
                     self.has_error = True
@@ -187,9 +190,9 @@ class ServerStub:
             accept_socket.sendall(response_data)
 
         except Exception as e:
-            self.err_lock.acquire()
+            # self.err_lock.acquire()
             print(f"服务{self.server_name}处理请求失败: {e}")
-            self.err_lock.release()
+            # self.err_lock.release()
         finally:
             accept_socket.close()
 
@@ -239,24 +242,28 @@ class ServerStub:
                 elif response_data is None:
                     raise Exception(f"注册中心返回空，重发心跳包")
                 else:
-                    self.lock.acquire()
+                    # self.lock.acquire()
                     print(f"心跳检测成功")
-                    self.lock.release()
+                    # self.lock.release()
 
                 # 刷新缓存行，便于测试
-                self.lock.acquire()
+                # self.lock.acquire()
                 sys.stdout.flush()
-                self.lock.release()
+                # self.lock.release()
 
-                self.err_lock.acquire()
+                # self.err_lock.acquire()
                 sys.stderr.flush()
-                self.err_lock.release()
+                # self.err_lock.release()
 
-                time.sleep(30)  # 30s重传一次
+                # self.lock.acquire()
+                print('debug: 缓存行已清空')
+                # self.lock.release()
+
+                time.sleep(10)  # 30s重传一次
             except Exception as e:
-                self.err_lock.acquire()
+                # self.err_lock.acquire()
                 print(e)
-                self.err_lock.release()
+                # self.err_lock.release()
                 if e == "注册中心返回空，重发心跳包":
                     pass
                 elif e == "心跳检测失败，重新注册中":  # 该情况为注册中心已把服务器移除，故需重新注册
@@ -277,7 +284,6 @@ class ServerStub:
         else:
             server_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 允许端口复用
-        server_socket.settimeout(5)
         server_socket.bind((self.ip, self.port))
         server_socket.listen(15)
         print(f"服务器{self.server_name}开始运行")
